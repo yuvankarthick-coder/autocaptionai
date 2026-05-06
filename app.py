@@ -8,7 +8,6 @@ st.set_page_config(
 
 import os
 from faster_whisper import WhisperModel
-from moviepy.editor import VideoFileClip, TextClip, CompositeVideoClip
 
 # Load model (use tiny for speed)
 model = WhisperModel("tiny")
