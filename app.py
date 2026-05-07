@@ -10,7 +10,7 @@ import os
 from faster_whisper import WhisperModel
 
 # Load model (use tiny for speed)
-model = WhisperModel("tiny")
+model = WhisperModel("tiny", compute_type="int8")
 
 # Function to generate subtitles
 def generate_subtitled_video(video_path):
