@@ -85,7 +85,7 @@ def generate_subtitled_video(video_path):
     final = CompositeVideoClip([video] + subtitles)
     import tempfile
     output_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
-    final.write_videofile(output_path)
+    final.write_videofile(output_path,codec="libx264",audio_codec="aac")
 
     return output_path
 
