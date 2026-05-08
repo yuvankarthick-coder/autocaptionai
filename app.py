@@ -1,20 +1,15 @@
 import streamlit as st
 
-# MUST be first
-st.set_page_config(
-    page_title="AutoCaptionAI",
-    page_icon="🎬"
-)
+st.set_page_config(page_title="AutoCaptionAI", page_icon="🎬")
 
 import os
 import cv2
 from faster_whisper import WhisperModel
 
-# Load model (CPU optimized)
+# Load model
 model = WhisperModel("tiny", compute_type="int8")
 
 
-# 🎬 Function
 def generate_subtitled_video(video_path):
     segments, _ = model.transcribe(video_path)
 
@@ -27,17 +22,16 @@ def generate_subtitled_video(video_path):
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     fps = cap.get(cv2.CAP_PROP_FPS)
 
+    # 🔥 FIX 1: fallback fps
     if fps == 0 or fps is None:
         fps = 24
 
     output_path = "output.mp4"
 
-    out = cv2.VideoWriter(
-        output_path,
-        cv2.VideoWriter_fourcc(*"mp4v"),
-        fps,
-        (width, height)
-    )
+    # 🔥 FIX 2: better codec
+    fourcc = cv2.VideoWriter_fourcc(*"avc1")
+
+    out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
 
     frame_count = 0
 
@@ -55,16 +49,8 @@ def generate_subtitled_video(video_path):
                 break
 
         if text:
-            # Background box
-            cv2.rectangle(
-                frame,
-                (20, height - 120),
-                (width - 20, height - 40),
-                (0, 0, 0),
-                -1
-            )
+            cv2.rectangle(frame, (20, height - 120), (width - 20, height - 40), (0, 0, 0), -1)
 
-            # Subtitle text
             cv2.putText(
                 frame,
                 text,
@@ -82,10 +68,14 @@ def generate_subtitled_video(video_path):
     cap.release()
     out.release()
 
-    return output_path
+    # 🔥 FIX 3: ensure file exists + delay write
+    if os.path.exists(output_path) and os.path.getsize(output_path) > 0:
+        return output_path
+    else:
+        return None
 
 
-# 🎬 UI
+# UI
 st.title("🎬 AutoCaptionAI")
 st.write("Generate subtitles for your videos instantly using AI ⚡")
 
@@ -98,9 +88,10 @@ if uploaded_file:
     st.video("input.mp4")
 
     if st.button("Generate Subtitles"):
-        output_path = generate_subtitled_video("input.mp4")
+        with st.spinner("Processing... ⏳"):
+            output_path = generate_subtitled_video("input.mp4")
 
-        if output_path and os.path.exists(output_path):
+        if output_path:
             st.success("Video created!")
             st.video(output_path)
         else:
