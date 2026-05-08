@@ -7,25 +7,14 @@ st.set_page_config(
 )
 
 import os
+import cv2
 from faster_whisper import WhisperModel
 
-# Load model (use tiny for speed)
+# Load model (optimized for CPU)
 model = WhisperModel("tiny", compute_type="int8")
 
-# Function to generate subtitles
-def generate_subtitled_video(video_path):
-    segments, _ = model.transcribe(video_path)
 
-    video = VideoFileClip(video_path)
-    subtitles = []
-
-    for segment in segments:
-        txt = segment.text
-        start = segment.start
-        end = segment.end
-
-import cv2
-
+# 🎬 Function to generate subtitled video
 def generate_subtitled_video(video_path):
     segments, _ = model.transcribe(video_path)
 
@@ -35,8 +24,10 @@ def generate_subtitled_video(video_path):
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     fps = cap.get(cv2.CAP_PROP_FPS)
 
+    output_path = "output.mp4"
+
     out = cv2.VideoWriter(
-        "output.mp4",
+        output_path,
         cv2.VideoWriter_fourcc(*"mp4v"),
         fps,
         (width, height)
@@ -55,13 +46,19 @@ def generate_subtitled_video(video_path):
         for seg in segments:
             if seg.start <= time_sec <= seg.end:
                 text = seg.text
-                break   # 🔥 IMPORTANT
+                break
 
         if text:
-            # 🔥 BLACK BACKGROUND BOX
-            cv2.rectangle(frame, (20, height - 120), (width - 20, height - 40), (0, 0, 0), -1)
+            # Black background box
+            cv2.rectangle(
+                frame,
+                (20, height - 120),
+                (width - 20, height - 40),
+                (0, 0, 0),
+                -1
+            )
 
-            # 🔥 BIG CLEAR TEXT
+            # Subtitle text
             cv2.putText(
                 frame,
                 text,
@@ -79,15 +76,8 @@ def generate_subtitled_video(video_path):
     cap.release()
     out.release()
 
-    return "output.mp4"
-
-
-    final = CompositeVideoClip([video] + subtitles)
-    import tempfile
-    output_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
-    final.write_videofile(output_path,codec="libx264",audio_codec="aac")
-
     return output_path
+
 
 # 🎬 UI
 st.title("🎬 AutoCaptionAI")
@@ -101,13 +91,11 @@ if uploaded_file:
 
     st.video("input.mp4")
 
-if st.button("Generate Subtitles"):
-    output_path = generate_subtitled_video("input.mp4")
+    if st.button("Generate Subtitles"):
+        output_path = generate_subtitled_video("input.mp4")
 
-    import os
-
-    if os.path.exists(output_path):
-        st.success("Video created!")
-        st.video(output_path)
-    else:
-        st.error("Video not generated ❌")
+        if os.path.exists(output_path):
+            st.success("Video created!")
+            st.video(output_path)
+        else:
+            st.error("Video not generated ❌")
