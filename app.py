@@ -24,6 +24,9 @@ def generate_subtitled_video(video_path):
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     fps = cap.get(cv2.CAP_PROP_FPS)
 
+if fps == 0 or fps is None:
+    fps = 24  # fallback fix
+
     output_path = "output.mp4"
 
     out = cv2.VideoWriter(
