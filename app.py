@@ -83,7 +83,8 @@ def generate_subtitled_video(video_path):
 
 
     final = CompositeVideoClip([video] + subtitles)
-    output_path = "output.mp4"
+    import tempfile
+    output_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
     final.write_videofile(output_path)
 
     return output_path
@@ -91,6 +92,7 @@ def generate_subtitled_video(video_path):
 # 🎬 UI
 st.title("🎬 AutoCaptionAI")
 st.write("Generate subtitles for your videos instantly using AI ⚡")
+st.write("saving to:",output_path)
 
 uploaded_file = st.file_uploader("Upload video", type=["mp4", "mov"])
 
