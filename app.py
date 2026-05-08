@@ -1,49 +1,86 @@
 import streamlit as st
 
-# MUST be first Streamlit command
-st.set_page_config(page_title="AutoCaptionAI", page_icon="🎬")
+# MUST be first
+st.set_page_config(
+    page_title="AutoCaptionAI",
+    page_icon="🎬"
+)
 
 import os
+import cv2
 from faster_whisper import WhisperModel
-from moviepy.editor import VideoFileClip, TextClip, CompositeVideoClip
 
-# Load model (optimized for CPU)
+# Load model (CPU optimized)
 model = WhisperModel("tiny", compute_type="int8")
 
 
-# 🎬 Function to generate subtitled video
+# 🎬 Function
 def generate_subtitled_video(video_path):
     segments, _ = model.transcribe(video_path)
 
-    video = VideoFileClip(video_path)
+    cap = cv2.VideoCapture(video_path)
 
-    subtitle_clips = []
+    if not cap.isOpened():
+        return None
 
-    for seg in segments:
-        txt = seg.text.strip()
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    fps = cap.get(cv2.CAP_PROP_FPS)
 
-        if txt:
-            txt_clip = TextClip(
-                txt,
-                fontsize=40,
-                color='yellow',
-                size=(video.w - 100, None),
-                method='caption'
-            ).set_position(('center', 'bottom')) \
-             .set_start(seg.start) \
-             .set_end(seg.end)
-
-            subtitle_clips.append(txt_clip)
-
-    final = CompositeVideoClip([video] + subtitle_clips)
+    if fps == 0 or fps is None:
+        fps = 24
 
     output_path = "output.mp4"
 
-    final.write_videofile(
+    out = cv2.VideoWriter(
         output_path,
-        codec="libx264",
-        audio_codec="aac"
+        cv2.VideoWriter_fourcc(*"mp4v"),
+        fps,
+        (width, height)
     )
+
+    frame_count = 0
+
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+
+        time_sec = frame_count / fps
+
+        text = ""
+        for seg in segments:
+            if seg.start <= time_sec <= seg.end:
+                text = seg.text
+                break
+
+        if text:
+            # Background box
+            cv2.rectangle(
+                frame,
+                (20, height - 120),
+                (width - 20, height - 40),
+                (0, 0, 0),
+                -1
+            )
+
+            # Subtitle text
+            cv2.putText(
+                frame,
+                text,
+                (40, height - 70),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                1,
+                (0, 255, 255),
+                2,
+                cv2.LINE_AA
+            )
+
+        out.write(frame)
+        frame_count += 1
+
+    cap.release()
+    out.release()
 
     return output_path
 
@@ -61,11 +98,10 @@ if uploaded_file:
     st.video("input.mp4")
 
     if st.button("Generate Subtitles"):
-        with st.spinner("Processing... ⏳"):
-            output_path = generate_subtitled_video("input.mp4")
+        output_path = generate_subtitled_video("input.mp4")
 
         if output_path and os.path.exists(output_path):
             st.success("Video created!")
             st.video(output_path)
         else:
-            st.error("Video not generated ❌")
+            st.error("Video failed ❌")
