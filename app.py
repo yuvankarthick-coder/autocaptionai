@@ -92,7 +92,6 @@ def generate_subtitled_video(video_path):
 # 🎬 UI
 st.title("🎬 AutoCaptionAI")
 st.write("Generate subtitles for your videos instantly using AI ⚡")
-st.write("saving to:",output_path)
 
 uploaded_file = st.file_uploader("Upload video", type=["mp4", "mov"])
 
