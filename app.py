@@ -102,3 +102,20 @@ if uploaded_file:
             st.video(output_path)
         else:
             st.error("Video not generated ❌")
+
+if not cap.isOpened():
+    st.error("Failed to open video ❌")
+    return None
+
+cap = cv2.VideoCapture(video_path)
+
+if not cap.isOpened():
+    st.error("Failed to open video ❌")
+    return None
+
+width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+fps = cap.get(cv2.CAP_PROP_FPS)
+
+if fps == 0 or fps is None:
+    fps = 24
