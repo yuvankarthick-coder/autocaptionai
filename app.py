@@ -1,31 +1,29 @@
 import streamlit as st
 
-# 🔥 MUST be first Streamlit command
-st.set_page_config(
-    page_title="AutoCaptionAI",
-    page_icon="🎬"
-)
+st.set_page_config(page_title="AutoCaptionAI", page_icon="🎬")
 
 import os
 import cv2
 from faster_whisper import WhisperModel
 
-# Load model (optimized for CPU)
 model = WhisperModel("tiny", compute_type="int8")
 
 
-# 🎬 Function to generate subtitled video
 def generate_subtitled_video(video_path):
     segments, _ = model.transcribe(video_path)
 
     cap = cv2.VideoCapture(video_path)
 
+    if not cap.isOpened():
+        st.error("Failed to open video ❌")
+        return None
+
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     fps = cap.get(cv2.CAP_PROP_FPS)
 
-if fps == 0 or fps is None:
-    fps = 24  # fallback fix
+    if fps == 0 or fps is None:
+        fps = 24
 
     output_path = "output.mp4"
 
@@ -52,16 +50,8 @@ if fps == 0 or fps is None:
                 break
 
         if text:
-            # Black background box
-            cv2.rectangle(
-                frame,
-                (20, height - 120),
-                (width - 20, height - 40),
-                (0, 0, 0),
-                -1
-            )
+            cv2.rectangle(frame, (20, height - 120), (width - 20, height - 40), (0, 0, 0), -1)
 
-            # Subtitle text
             cv2.putText(
                 frame,
                 text,
@@ -82,7 +72,7 @@ if fps == 0 or fps is None:
     return output_path
 
 
-# 🎬 UI
+# UI
 st.title("🎬 AutoCaptionAI")
 st.write("Generate subtitles for your videos instantly using AI ⚡")
 
@@ -97,25 +87,8 @@ if uploaded_file:
     if st.button("Generate Subtitles"):
         output_path = generate_subtitled_video("input.mp4")
 
-        if os.path.exists(output_path):
+        if output_path and os.path.exists(output_path):
             st.success("Video created!")
             st.video(output_path)
         else:
             st.error("Video not generated ❌")
-
-if not cap.isOpened():
-    st.error("Failed to open video ❌")
-    return None
-
-cap = cv2.VideoCapture(video_path)
-
-if not cap.isOpened():
-    st.error("Failed to open video ❌")
-    return None
-
-width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-fps = cap.get(cv2.CAP_PROP_FPS)
-
-if fps == 0 or fps is None:
-    fps = 24
