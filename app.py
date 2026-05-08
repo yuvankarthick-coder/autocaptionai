@@ -101,7 +101,7 @@ if uploaded_file:
     st.video("input.mp4")
 
 if st.button("Generate Subtitles"):
-    output_path = generate_subtitled_video(video_path)
+    output_path = generate_subtitled_video("input.mp4")
 
     import os
 
