@@ -100,9 +100,13 @@ if uploaded_file:
 
     st.video("input.mp4")
 
-    if st.button("🚀 Generate Subtitles"):
-        with st.spinner("Processing... ⏳"):
-            output = generate_subtitled_video("input.mp4")
+    if st.button("Generate Subtitles"):
+    output_path = generate_subtitled_video(video_path)
 
-        st.success("✅ Done!")
-        st.video(output)
+    import os
+
+    if os.path.exists(output_path):
+        st.success("Video created!")
+        st.video(output_path)
+    else:
+        st.error("Video not generated ❌")
