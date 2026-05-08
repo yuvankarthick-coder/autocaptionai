@@ -4,3 +4,4 @@ faster-whisper
 numpy
 imageio
 imageio-ffmpeg
+moviepy
