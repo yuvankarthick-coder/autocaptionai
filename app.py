@@ -3,71 +3,33 @@ import streamlit as st
 st.set_page_config(page_title="AutoCaptionAI", page_icon="🎬")
 
 import os
-import cv2
-from faster_whisper import WhisperModel
-
-model = WhisperModel("tiny", compute_type="int8")
+from moviepy.editor import VideoFileClip, TextClip, CompositeVideoClip
 
 
 def generate_subtitled_video(video_path):
     segments, _ = model.transcribe(video_path)
 
-    cap = cv2.VideoCapture(video_path)
+    video = VideoFileClip(video_path)
 
-    if not cap.isOpened():
-        st.error("Failed to open video ❌")
-        return None
+    subtitle_clips = []
 
-    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    fps = cap.get(cv2.CAP_PROP_FPS)
+    for seg in segments:
+        txt = seg.text
 
-    if fps == 0 or fps is None:
-        fps = 24
+        txt_clip = TextClip(
+            txt,
+            fontsize=40,
+            color='yellow',
+            size=(video.w - 100, None),
+            method='caption'
+        ).set_position(('center', 'bottom')).set_start(seg.start).set_end(seg.end)
+
+        subtitle_clips.append(txt_clip)
+
+    final = CompositeVideoClip([video] + subtitle_clips)
 
     output_path = "output.mp4"
-
-    out = cv2.VideoWriter(
-        output_path,
-        cv2.VideoWriter_fourcc(*"mp4v"),
-        fps,
-        (width, height)
-    )
-
-    frame_count = 0
-
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
-
-        time_sec = frame_count / fps
-
-        text = ""
-        for seg in segments:
-            if seg.start <= time_sec <= seg.end:
-                text = seg.text
-                break
-
-        if text:
-            cv2.rectangle(frame, (20, height - 120), (width - 20, height - 40), (0, 0, 0), -1)
-
-            cv2.putText(
-                frame,
-                text,
-                (40, height - 70),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                1,
-                (0, 255, 255),
-                2,
-                cv2.LINE_AA
-            )
-
-        out.write(frame)
-        frame_count += 1
-
-    cap.release()
-    out.release()
+    final.write_videofile(output_path, codec="libx264", audio_codec="aac")
 
     return output_path
 
