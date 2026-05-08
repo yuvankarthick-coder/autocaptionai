@@ -1,11 +1,17 @@
 import streamlit as st
 
+# MUST be first Streamlit command
 st.set_page_config(page_title="AutoCaptionAI", page_icon="🎬")
 
 import os
+from faster_whisper import WhisperModel
 from moviepy.editor import VideoFileClip, TextClip, CompositeVideoClip
 
+# Load model (optimized for CPU)
+model = WhisperModel("tiny", compute_type="int8")
 
+
+# 🎬 Function to generate subtitled video
 def generate_subtitled_video(video_path):
     segments, _ = model.transcribe(video_path)
 
@@ -14,27 +20,35 @@ def generate_subtitled_video(video_path):
     subtitle_clips = []
 
     for seg in segments:
-        txt = seg.text
+        txt = seg.text.strip()
 
-        txt_clip = TextClip(
-            txt,
-            fontsize=40,
-            color='yellow',
-            size=(video.w - 100, None),
-            method='caption'
-        ).set_position(('center', 'bottom')).set_start(seg.start).set_end(seg.end)
+        if txt:
+            txt_clip = TextClip(
+                txt,
+                fontsize=40,
+                color='yellow',
+                size=(video.w - 100, None),
+                method='caption'
+            ).set_position(('center', 'bottom')) \
+             .set_start(seg.start) \
+             .set_end(seg.end)
 
-        subtitle_clips.append(txt_clip)
+            subtitle_clips.append(txt_clip)
 
     final = CompositeVideoClip([video] + subtitle_clips)
 
     output_path = "output.mp4"
-    final.write_videofile(output_path, codec="libx264", audio_codec="aac")
+
+    final.write_videofile(
+        output_path,
+        codec="libx264",
+        audio_codec="aac"
+    )
 
     return output_path
 
 
-# UI
+# 🎬 UI
 st.title("🎬 AutoCaptionAI")
 st.write("Generate subtitles for your videos instantly using AI ⚡")
 
@@ -47,7 +61,8 @@ if uploaded_file:
     st.video("input.mp4")
 
     if st.button("Generate Subtitles"):
-        output_path = generate_subtitled_video("input.mp4")
+        with st.spinner("Processing... ⏳"):
+            output_path = generate_subtitled_video("input.mp4")
 
         if output_path and os.path.exists(output_path):
             st.success("Video created!")
