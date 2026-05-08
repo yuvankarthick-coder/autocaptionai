@@ -1,7 +1,5 @@
 streamlit
-opencv-python-headless
 faster-whisper
 numpy
-imageio
 imageio-ffmpeg
 moviepy
