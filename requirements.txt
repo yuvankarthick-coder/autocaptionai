@@ -2,4 +2,4 @@ streamlit
 faster-whisper
 numpy
 imageio-ffmpeg
-opencv-python-headless
+imageio
