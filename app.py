@@ -10,6 +10,8 @@ from faster_whisper import WhisperModel
 model = WhisperModel("tiny", compute_type="int8")
 
 
+import imageio
+
 def generate_subtitled_video(video_path):
     try:
         segments, _ = model.transcribe(video_path)
@@ -17,28 +19,13 @@ def generate_subtitled_video(video_path):
         cap = cv2.VideoCapture(video_path)
 
         if not cap.isOpened():
-            print("❌ Cannot open video")
             return None
 
-        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         fps = cap.get(cv2.CAP_PROP_FPS)
-
-        print("DEBUG:", width, height, fps)
-
         if fps == 0 or fps is None:
             fps = 24
 
-        output_path = "output.mp4"
-
-        # 🔥 safer codec
-        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-
-        out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
-
-        if not out.isOpened():
-            print("❌ VideoWriter failed")
-            return None
+        frames = []
 
         frame_count = 0
 
@@ -56,12 +43,14 @@ def generate_subtitled_video(video_path):
                     break
 
             if text:
-                cv2.rectangle(frame, (20, height - 120), (width - 20, height - 40), (0, 0, 0), -1)
+                h, w, _ = frame.shape
+
+                cv2.rectangle(frame, (20, h - 120), (w - 20, h - 40), (0, 0, 0), -1)
 
                 cv2.putText(
                     frame,
                     text,
-                    (40, height - 70),
+                    (40, h - 70),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     1,
                     (0, 255, 255),
@@ -69,21 +58,18 @@ def generate_subtitled_video(video_path):
                     cv2.LINE_AA
                 )
 
-            out.write(frame)
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            frames.append(frame)
+
             frame_count += 1
 
         cap.release()
-        out.release()
 
-        # 🔥 check file
-        if os.path.exists(output_path):
-            size = os.path.getsize(output_path)
-            print("OUTPUT SIZE:", size)
+        output_path = "output.mp4"
 
-            if size > 1000:
-                return output_path
+        imageio.mimsave(output_path, frames, fps=fps)
 
-        return None
+        return output_path
 
     except Exception as e:
         print("ERROR:", e)
