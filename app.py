@@ -3,7 +3,6 @@ import streamlit as st
 st.set_page_config(page_title="AutoCaptionAI", page_icon="🎬")
 
 import os
-import cv2
 from faster_whisper import WhisperModel
 
 # Load model
