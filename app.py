@@ -11,67 +11,82 @@ model = WhisperModel("tiny", compute_type="int8")
 
 
 def generate_subtitled_video(video_path):
-    segments, _ = model.transcribe(video_path)
+    try:
+        segments, _ = model.transcribe(video_path)
 
-    cap = cv2.VideoCapture(video_path)
+        cap = cv2.VideoCapture(video_path)
 
-    if not cap.isOpened():
-        return None
+        if not cap.isOpened():
+            print("❌ Cannot open video")
+            return None
 
-    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    fps = cap.get(cv2.CAP_PROP_FPS)
+        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        fps = cap.get(cv2.CAP_PROP_FPS)
 
-    # 🔥 FIX 1: fallback fps
-    if fps == 0 or fps is None:
-        fps = 24
+        print("DEBUG:", width, height, fps)
 
-    output_path = "output.mp4"
+        if fps == 0 or fps is None:
+            fps = 24
 
-    # 🔥 FIX 2: better codec
-    fourcc = cv2.VideoWriter_fourcc(*"avc1")
+        output_path = "output.mp4"
 
-    out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+        # 🔥 safer codec
+        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
 
-    frame_count = 0
+        out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
 
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
+        if not out.isOpened():
+            print("❌ VideoWriter failed")
+            return None
 
-        time_sec = frame_count / fps
+        frame_count = 0
 
-        text = ""
-        for seg in segments:
-            if seg.start <= time_sec <= seg.end:
-                text = seg.text
+        while True:
+            ret, frame = cap.read()
+            if not ret:
                 break
 
-        if text:
-            cv2.rectangle(frame, (20, height - 120), (width - 20, height - 40), (0, 0, 0), -1)
+            time_sec = frame_count / fps
 
-            cv2.putText(
-                frame,
-                text,
-                (40, height - 70),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                1,
-                (0, 255, 255),
-                2,
-                cv2.LINE_AA
-            )
+            text = ""
+            for seg in segments:
+                if seg.start <= time_sec <= seg.end:
+                    text = seg.text
+                    break
 
-        out.write(frame)
-        frame_count += 1
+            if text:
+                cv2.rectangle(frame, (20, height - 120), (width - 20, height - 40), (0, 0, 0), -1)
 
-    cap.release()
-    out.release()
+                cv2.putText(
+                    frame,
+                    text,
+                    (40, height - 70),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    1,
+                    (0, 255, 255),
+                    2,
+                    cv2.LINE_AA
+                )
 
-    # 🔥 FIX 3: ensure file exists + delay write
-    if os.path.exists(output_path) and os.path.getsize(output_path) > 0:
-        return output_path
-    else:
+            out.write(frame)
+            frame_count += 1
+
+        cap.release()
+        out.release()
+
+        # 🔥 check file
+        if os.path.exists(output_path):
+            size = os.path.getsize(output_path)
+            print("OUTPUT SIZE:", size)
+
+            if size > 1000:
+                return output_path
+
+        return None
+
+    except Exception as e:
+        print("ERROR:", e)
         return None
 
 
