@@ -50,7 +50,7 @@ def generate_srt(video_path):
 
 
 # Generate subtitled video
-def generate_subtitled_video(video_path, subtitle_style):
+def generate_subtitled_video(video_path, subtitle_style, language):
     try:
         segments, _ = model.transcribe(video_path)
         segments = list(segments)
@@ -214,6 +214,16 @@ subtitle_style = st.selectbox(
         "YouTube Shorts",
         "TikTok",
         "Instagram Reels"
+    ]
+)
+
+language = st.selectbox(
+    "🌍 Language",
+    [
+        "Auto Detect",
+        "English",
+        "Tamil",
+        "Hindi"
     ]
 )
 
