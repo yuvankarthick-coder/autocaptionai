@@ -156,8 +156,8 @@ if uploaded_file is not None:
 
         with st.spinner("Generating subtitles..."):
 
-            output_file = generate_subtitled_video("input.mp4");srt_file = generate_srt("input.mp4")
-
+            output_file = generate_subtitled_video("input.mp4")
+            srt_file = generate_srt("input.mp4")
         if output_file:
             st.success("✅ Video created successfully!")
 
