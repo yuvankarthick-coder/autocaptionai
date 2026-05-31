@@ -95,8 +95,6 @@ def generate_subtitled_video(video_path):
         cap.release()
         writer.close()
 
-import subprocess
-
 final_output = "final_output.mp4"
 
 subprocess.run([
