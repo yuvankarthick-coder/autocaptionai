@@ -95,9 +95,9 @@ def generate_subtitled_video(video_path):
         cap.release()
         writer.close()
 
-final_output = "final_output.mp4"
+        final_output = "final_output.mp4"
 
-subprocess.run([
+        subprocess.run([
     "ffmpeg",
     "-y",
     "-i", "output.mp4",
