@@ -2,6 +2,7 @@ import streamlit as st
 import os
 import cv2
 import imageio
+import textwrap
 import subprocess
 from faster_whisper import WhisperModel
 
@@ -66,25 +67,37 @@ def generate_subtitled_video(video_path):
 
             if subtitle_text:
                 # Subtitle background
-                cv2.rectangle(
-                    frame,
-                    (20, height - 120),
-                    (width - 20, height - 40),
-                    (0, 0, 0),
-                    -1
-                )
+                line_count = max(1, len(wrapped_text))
+
+box_height = 50 + (line_count * 35)
+
+cv2.rectangle(
+    frame,
+    (20, height - box_height - 20),
+    (width - 20, height - 20),
+    (0, 0, 0),
+    -1
+)
 
                 # Subtitle text
-                cv2.putText(
-                    frame,
-                    subtitle_text,
-                    (40, height - 70),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    1,
-                    (0, 255, 255),
-                    2,
-                    cv2.LINE_AA
-                )
+                import textwrap
+
+wrapped_text = textwrap.wrap(subtitle_text, width=30)
+
+y = height - 90
+
+for line in wrapped_text:
+    cv2.putText(
+        frame,
+        line,
+        (40, y),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        1,
+        (0, 255, 255),
+        2,
+        cv2.LINE_AA
+    )
+    y += 35
 
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
