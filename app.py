@@ -2,6 +2,7 @@ import streamlit as st
 import os
 import cv2
 import imageio
+import textwrap
 import subprocess
 from faster_whisper import WhisperModel
 
@@ -65,33 +66,37 @@ def generate_subtitled_video(video_path):
                     break
 
             if subtitle_text:
-    wrapped_text = textwrap.wrap(subtitle_text, width=30)
 
-    line_count = max(1, len(wrapped_text))
-    box_height = 50 + (line_count * 35)
+                wrapped_text = textwrap.wrap(
+                    subtitle_text,
+                    width=30
+                )
 
-    cv2.rectangle(
-        frame,
-        (20, height - box_height - 20),
-        (width - 20, height - 20),
-        (0, 0, 0),
-        -1
-    )
+                line_count = max(1, len(wrapped_text))
+                box_height = 50 + (line_count * 35)
 
-    y = height - box_height + 20
+                cv2.rectangle(
+                    frame,
+                    (20, height - box_height - 20),
+                    (width - 20, height - 20),
+                    (0, 0, 0),
+                    -1
+                )
 
-    for line in wrapped_text:
-        cv2.putText(
-            frame,
-            line,
-            (40, y),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            1,
-            (0, 255, 255),
-            2,
-            cv2.LINE_AA
-        )
-        y += 35
+                y = height - box_height + 35
+
+                for line in wrapped_text:
+                    cv2.putText(
+                        frame,
+                        line,
+                        (40, y),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        1,
+                        (0, 255, 255),
+                        2,
+                        cv2.LINE_AA
+                    )
+                    y += 35
 
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
@@ -158,3 +163,14 @@ if uploaded_file is not None:
 
             st.subheader("Subtitled Video")
             st.video(output_file)
+
+            with open(output_file, "rb") as f:
+                st.download_button(
+                    "⬇ Download Video",
+                    data=f,
+                    file_name="subtitled_video.mp4",
+                    mime="video/mp4"
+                )
+
+        else:
+            st.error("❌ Failed to generate video.")
