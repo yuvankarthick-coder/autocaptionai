@@ -31,8 +31,20 @@ def format_timestamp(seconds):
 
 
 # Generate SRT file
-def generate_srt(video_path):
+def generate_srt(video_path, language):
+    lang_map = {
+    "English": "en",
+    "Tamil": "ta",
+    "Hindi": "hi"
+}
+
+if language == "Auto Detect":
     segments, _ = model.transcribe(video_path)
+else:
+    segments, _ = model.transcribe(
+        video_path,
+        language=lang_map[language]
+    )
     segments = list(segments)
 
     srt_path = "subtitles.srt"
@@ -52,7 +64,19 @@ def generate_srt(video_path):
 # Generate subtitled video
 def generate_subtitled_video(video_path, subtitle_style, language):
     try:
-        segments, _ = model.transcribe(video_path)
+        lang_map = {
+    "English": "en",
+    "Tamil": "ta",
+    "Hindi": "hi"
+}
+
+if language == "Auto Detect":
+    segments, _ = model.transcribe(video_path)
+else:
+    segments, _ = model.transcribe(
+        video_path,
+        language=lang_map[language]
+    )
         segments = list(segments)
 
         cap = cv2.VideoCapture(video_path)
@@ -246,10 +270,10 @@ if uploaded_file is not None:
 
             output_file = generate_subtitled_video(
                 "input.mp4",
-                subtitle_style
+                subtitle_style,language
             )
 
-            srt_file = generate_srt("input.mp4")
+            srt_file = generate_srt("input.mp4", language)
 
         if output_file:
 
