@@ -2,6 +2,7 @@ import streamlit as st
 import os
 import cv2
 import imageio
+import subprocess
 from faster_whisper import WhisperModel
 
 # Page config
@@ -92,7 +93,7 @@ def generate_subtitled_video(video_path):
             frame_count += 1
 
         cap.release()
-writer.close()
+        writer.close()
 
 import subprocess
 
