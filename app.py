@@ -69,7 +69,6 @@ def generate_subtitled_video(video_path, subtitle_style, language):
     "Tamil": "ta",
     "Hindi": "hi"
 }
-
 if language == "Auto Detect":
     segments, _ = model.transcribe(video_path)
 else:
