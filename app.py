@@ -92,75 +92,75 @@ def generate_subtitled_video(video_path):
 
             if subtitle_text:
 
-                wrapped_text = textwrap.wrap(
-                    subtitle_text,
-                    width=30
-                )
+    wrapped_text = textwrap.wrap(
+        subtitle_text,
+        width=30
+    )
 
-                line_count = max(1, len(wrapped_text))
-                box_height = 50 + (line_count * 35)
+    line_count = max(1, len(wrapped_text))
+    box_height = 50 + (line_count * 35)
 
-                cv2.rectangle(
-                    frame,
-                    (20, height - box_height - 20),
-                    (width - 20, height - 20),
-                    (0, 0, 0),
-                    -1
-                )
+    cv2.rectangle(
+        frame,
+        (20, height - box_height - 20),
+        (width - 20, height - 20),
+        (0, 0, 0),
+        -1
+    )
 
-                y = height - box_height + 35
+    y = height - box_height + 35
 
-for line in wrapped_text:
+    for line in wrapped_text:
 
-    if subtitle_style == "YouTube Shorts":
+        if subtitle_style == "YouTube Shorts":
 
-        cv2.putText(
-            frame,
-            line,
-            (40, y),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            1,
-            (0, 255, 255),
-            2,
-            cv2.LINE_AA
-        )
+            cv2.putText(
+                frame,
+                line,
+                (40, y),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                1,
+                (0, 255, 255),
+                2,
+                cv2.LINE_AA
+            )
 
-    elif subtitle_style == "TikTok":
+        elif subtitle_style == "TikTok":
 
-        cv2.putText(
-            frame,
-            line,
-            (40, y),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            1.2,
-            (255, 255, 255),
-            3,
-            cv2.LINE_AA
-        )
+            cv2.putText(
+                frame,
+                line,
+                (40, y),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                1.2,
+                (255, 255, 255),
+                3,
+                cv2.LINE_AA
+            )
 
-    else:  # Instagram Reels
+        else:
 
-        (text_width, _), _ = cv2.getTextSize(
-            line,
-            cv2.FONT_HERSHEY_SIMPLEX,
-            1,
-            2
-        )
+            (text_width, _), _ = cv2.getTextSize(
+                line,
+                cv2.FONT_HERSHEY_SIMPLEX,
+                1,
+                2
+            )
 
-        x = (width - text_width) // 2
+            x = (width - text_width) // 2
 
-        cv2.putText(
-            frame,
-            line,
-            (x, y),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            1,
-            (255, 255, 255),
-            2,
-            cv2.LINE_AA
-        )
+            cv2.putText(
+                frame,
+                line,
+                (x, y),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                1,
+                (255, 255, 255),
+                2,
+                cv2.LINE_AA
+            )
 
-    y += 35
+        y += 35
 
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
