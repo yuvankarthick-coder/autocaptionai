@@ -6,13 +6,13 @@ import textwrap
 import subprocess
 from faster_whisper import WhisperModel
 
-# Page config
+# Page Config
 st.set_page_config(
     page_title="AutoCaptionAI",
     page_icon="🎬"
 )
 
-# Load Whisper model
+# Load Whisper Model
 @st.cache_resource
 def load_model():
     return WhisperModel("tiny", compute_type="int8")
@@ -20,7 +20,9 @@ def load_model():
 model = load_model()
 
 
-# SRT timestamp formatter
+# ----------------------------
+# Timestamp Formatter
+# ----------------------------
 def format_timestamp(seconds):
     hours = int(seconds // 3600)
     minutes = int((seconds % 3600) // 60)
@@ -30,15 +32,41 @@ def format_timestamp(seconds):
     return f"{hours:02}:{minutes:02}:{secs:02},{millis:03}"
 
 
-# Generate SRT file
-def generate_srt(video_path):
-    segments, _ = model.transcribe(video_path)
-    segments = list(segments)
+# ----------------------------
+# Get Transcription
+# ----------------------------
+def get_segments(video_path, language):
+
+    lang_map = {
+        "English": "en",
+        "Tamil": "ta",
+        "Hindi": "hi"
+    }
+
+    if language == "Auto Detect":
+        segments, _ = model.transcribe(video_path)
+    else:
+        segments, _ = model.transcribe(
+            video_path,
+            language=lang_map[language]
+        )
+
+    return list(segments)
+
+
+# ----------------------------
+# Generate SRT
+# ----------------------------
+def generate_srt(video_path, language):
+
+    segments = get_segments(video_path, language)
 
     srt_path = "subtitles.srt"
 
     with open(srt_path, "w", encoding="utf-8") as f:
+
         for i, seg in enumerate(segments, start=1):
+
             start = format_timestamp(seg.start)
             end = format_timestamp(seg.end)
 
@@ -49,11 +77,21 @@ def generate_srt(video_path):
     return srt_path
 
 
-# Generate subtitled video
-def generate_subtitled_video(video_path, subtitle_style):
+# ----------------------------
+# Generate Video
+# ----------------------------
+def generate_subtitled_video(
+    video_path,
+    subtitle_style,
+    language
+):
+
     try:
-        segments, _ = model.transcribe(video_path)
-        segments = list(segments)
+
+        segments = get_segments(
+            video_path,
+            language
+        )
 
         cap = cv2.VideoCapture(video_path)
 
@@ -79,6 +117,7 @@ def generate_subtitled_video(video_path, subtitle_style):
         frame_count = 0
 
         while True:
+
             ret, frame = cap.read()
 
             if not ret:
@@ -89,6 +128,7 @@ def generate_subtitled_video(video_path, subtitle_style):
             subtitle_text = ""
 
             for seg in segments:
+
                 if seg.start <= current_time <= seg.end:
                     subtitle_text = seg.text.strip()
                     break
@@ -100,8 +140,14 @@ def generate_subtitled_video(video_path, subtitle_style):
                     width=30
                 )
 
-                line_count = max(1, len(wrapped_text))
-                box_height = 50 + (line_count * 35)
+                line_count = max(
+                    1,
+                    len(wrapped_text)
+                )
+
+                box_height = 50 + (
+                    line_count * 35
+                )
 
                 cv2.rectangle(
                     frame,
@@ -141,7 +187,7 @@ def generate_subtitled_video(video_path, subtitle_style):
                             cv2.LINE_AA
                         )
 
-                    else:  # Instagram Reels
+                    else:
 
                         (text_width, _), _ = cv2.getTextSize(
                             line,
@@ -183,12 +229,18 @@ def generate_subtitled_video(video_path, subtitle_style):
             [
                 "ffmpeg",
                 "-y",
-                "-i", output_path,
-                "-i", video_path,
-                "-c:v", "copy",
-                "-c:a", "aac",
-                "-map", "0:v:0",
-                "-map", "1:a:0",
+                "-i",
+                output_path,
+                "-i",
+                video_path,
+                "-c:v",
+                "copy",
+                "-c:a",
+                "aac",
+                "-map",
+                "0:v:0",
+                "-map",
+                "1:a:0",
                 final_output
             ],
             check=True
@@ -204,9 +256,14 @@ def generate_subtitled_video(video_path, subtitle_style):
         return None
 
 
+# ----------------------------
 # UI
+# ----------------------------
+
 st.title("🎬 AutoCaptionAI")
-st.write("Generate subtitles for your videos using AI ⚡")
+st.write(
+    "Generate subtitles for your videos using AI ⚡"
+)
 
 subtitle_style = st.selectbox(
     "🎨 Subtitle Style",
@@ -217,9 +274,24 @@ subtitle_style = st.selectbox(
     ]
 )
 
+language = st.selectbox(
+    "🌍 Language",
+    [
+        "Auto Detect",
+        "English",
+        "Tamil",
+        "Hindi"
+    ]
+)
+
 uploaded_file = st.file_uploader(
     "Upload Video",
-    type=["mp4", "mov", "avi", "mkv"]
+    type=[
+        "mp4",
+        "mov",
+        "avi",
+        "mkv"
+    ]
 )
 
 if uploaded_file is not None:
@@ -232,23 +304,38 @@ if uploaded_file is not None:
 
     if st.button("🚀 Generate Subtitles"):
 
-        with st.spinner("Generating subtitles..."):
+        with st.spinner(
+            "Generating subtitles..."
+        ):
 
             output_file = generate_subtitled_video(
                 "input.mp4",
-                subtitle_style
+                subtitle_style,
+                language
             )
 
-            srt_file = generate_srt("input.mp4")
+            srt_file = generate_srt(
+                "input.mp4",
+                language
+            )
 
         if output_file:
 
-            st.success("✅ Video created successfully!")
+            st.success(
+                "✅ Video created successfully!"
+            )
 
-            st.subheader("Subtitled Video")
+            st.subheader(
+                "Subtitled Video"
+            )
+
             st.video(output_file)
 
-            with open(output_file, "rb") as f:
+            with open(
+                output_file,
+                "rb"
+            ) as f:
+
                 st.download_button(
                     "⬇ Download Video",
                     data=f,
@@ -256,7 +343,11 @@ if uploaded_file is not None:
                     mime="video/mp4"
                 )
 
-            with open(srt_file, "rb") as f:
+            with open(
+                srt_file,
+                "rb"
+            ) as f:
+
                 st.download_button(
                     "📄 Download SRT",
                     data=f,
@@ -265,4 +356,7 @@ if uploaded_file is not None:
                 )
 
         else:
-            st.error("❌ Failed to generate video.")
+
+            st.error(
+                "❌ Failed to generate video."
+            )
