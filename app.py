@@ -1,57 +1,83 @@
 import streamlit as st
-
-st.set_page_config(page_title="AutoCaptionAI", page_icon="🎬")
-
 import os
+import cv2
+import imageio
 from faster_whisper import WhisperModel
 
-# Load model
-model = WhisperModel("tiny", compute_type="int8")
+# Page config
+st.set_page_config(
+    page_title="AutoCaptionAI",
+    page_icon="🎬"
+)
 
+# Load Whisper model
+@st.cache_resource
+def load_model():
+    return WhisperModel("tiny", compute_type="int8")
 
-import imageio
+model = load_model()
+
 
 def generate_subtitled_video(video_path):
     try:
-        segments, _ = model.transcribe(video_path)
+        # Transcribe video
+        segments, info = model.transcribe(video_path)
+        segments = list(segments)
 
+        # Open video
         cap = cv2.VideoCapture(video_path)
 
         if not cap.isOpened():
+            st.error("Could not open video.")
             return None
 
         fps = cap.get(cv2.CAP_PROP_FPS)
-        if fps == 0 or fps is None:
+
+        if fps <= 0:
             fps = 24
+
+        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
         output_path = "output.mp4"
 
-        writer = imageio.get_writer(output_path, fps=fps)
+        writer = imageio.get_writer(
+            output_path,
+            fps=fps
+        )
 
         frame_count = 0
 
         while True:
             ret, frame = cap.read()
+
             if not ret:
                 break
 
-            time_sec = frame_count / fps
+            current_time = frame_count / fps
 
-            text = ""
+            subtitle_text = ""
+
             for seg in segments:
-                if seg.start <= time_sec <= seg.end:
-                    text = seg.text
+                if seg.start <= current_time <= seg.end:
+                    subtitle_text = seg.text.strip()
                     break
 
-            if text:
-                h, w, _ = frame.shape
+            if subtitle_text:
+                # Background box
+                cv2.rectangle(
+                    frame,
+                    (20, height - 120),
+                    (width - 20, height - 40),
+                    (0, 0, 0),
+                    -1
+                )
 
-                cv2.rectangle(frame, (20, h - 120), (w - 20, h - 40), (0, 0, 0), -1)
-
+                # Subtitle text
                 cv2.putText(
                     frame,
-                    text,
-                    (40, h - 70),
+                    subtitle_text,
+                    (40, height - 70),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     1,
                     (0, 255, 255),
@@ -59,241 +85,62 @@ def generate_subtitled_video(video_path):
                     cv2.LINE_AA
                 )
 
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-            writer.append_data(frame)   # ✅ STREAM write (no RAM issue)
-
-            frame_count += 1
-
-        cap.release()
-        writer.close()
-
-        if os.path.exists(output_path) and os.path.getsize(output_path) > 1000:
-            return output_path
-
-        return None
-
-    except Exception as e:
-        print("ERROR:", e)
-        return None 
-
-def generate_subtitled_video(video_path):
-    try:
-        segments, _ = model.transcribe(video_path)
-
-        cap = cv2.VideoCapture(video_path)
-
-        if not cap.isOpened():
-            return None
-
-        fps = cap.get(cv2.CAP_PROP_FPS)
-        if fps == 0 or fps is None:
-            fps = 24
-
-        output_path = "output.mp4"
-
-        writer = imageio.get_writer(output_path, fps=fps)
-
-        frame_count = 0
-
-        while True:
-            ret, frame = cap.read()
-            if not ret:
-                break
-
-            time_sec = frame_count / fps
-
-            text = ""
-            for seg in segments:
-                if seg.start <= time_sec <= seg.end:
-                    text = seg.text
-                    break
-
-            if text:
-                h, w, _ = frame.shape
-
-                cv2.rectangle(frame, (20, h - 120), (w - 20, h - 40), (0, 0, 0), -1)
-
-                cv2.putText(
-                    frame,
-                    text,
-                    (40, h - 70),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    1,
-                    (0, 255, 255),
-                    2,
-                    cv2.LINE_AA
-                )
-
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
-            writer.append_data(frame)   # ✅ STREAM write (no RAM issue)
+            writer.append_data(frame_rgb)
 
             frame_count += 1
 
         cap.release()
         writer.close()
 
-        if os.path.exists(output_path) and os.path.getsize(output_path) > 1000:
-            return output_path
+        if os.path.exists(output_path):
+            if os.path.getsize(output_path) > 1000:
+                return output_path
 
         return None
 
     except Exception as e:
-        print("ERROR:", e)
-        return Noneko
-
-def generate_subtitled_video(video_path):
-    try:
-        segments, _ = model.transcribe(video_path)
-
-        cap = cv2.VideoCapture(video_path)
-
-        if not cap.isOpened():
-            return None
-
-        fps = cap.get(cv2.CAP_PROP_FPS)
-        if fps == 0 or fps is None:
-            fps = 24
-
-        output_path = "output.mp4"
-
-        writer = imageio.get_writer(output_path, fps=fps)
-
-        frame_count = 0
-
-        while True:
-            ret, frame = cap.read()
-            if not ret:
-                break
-
-            time_sec = frame_count / fps
-
-            text = ""
-            for seg in segments:
-                if seg.start <= time_sec <= seg.end:
-                    text = seg.text
-                    break
-
-            if text:
-                h, w, _ = frame.shape
-
-                cv2.rectangle(frame, (20, h - 120), (w - 20, h - 40), (0, 0, 0), -1)
-
-                cv2.putText(
-                    frame,
-                    text,
-                    (40, h - 70),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    1,
-                    (0, 255, 255),
-                    2,
-                    cv2.LINE_AA
-                )
-
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
-            writer.append_data(frame)   # ✅ STREAM write (no RAM issue)
-
-            frame_count += 1
-
-        cap.release()
-        writer.close()
-
-        if os.path.exists(output_path) and os.path.getsize(output_path) > 1000:
-            return output_path
-
-        return None
-
-    except Exception as e:
-        print("ERROR:", e)
-        return Non
-
-def generate_subtitled_video(video_path):
-    try:
-        segments, _ = model.transcribe(video_path)
-
-        cap = cv2.VideoCapture(video_path)
-
-        if not cap.isOpened():
-            return None
-
-        fps = cap.get(cv2.CAP_PROP_FPS)
-        if fps == 0 or fps is None:
-            fps = 24
-
-        output_path = "output.mp4"
-
-        writer = imageio.get_writer(output_path, fps=fps)
-
-        frame_count = 0
-
-        while True:
-            ret, frame = cap.read()
-            if not ret:
-                break
-
-            time_sec = frame_count / fps
-
-            text = ""
-            for seg in segments:
-                if seg.start <= time_sec <= seg.end:
-                    text = seg.text
-                    break
-
-            if text:
-                h, w, _ = frame.shape
-
-                cv2.rectangle(frame, (20, h - 120), (w - 20, h - 40), (0, 0, 0), -1)
-
-                cv2.putText(
-                    frame,
-                    text,
-                    (40, h - 70),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    1,
-                    (0, 255, 255),
-                    2,
-                    cv2.LINE_AA
-                )
-
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
-            writer.append_data(frame)   # ✅ STREAM write (no RAM issue)
-
-            frame_count += 1
-
-        cap.release()
-        writer.close()
-
-        if os.path.exists(output_path) and os.path.getsize(output_path) > 1000:
-            return output_path
-
-        return None
-
-    except Exception as e:
-        print("ERROR:", e)
+        st.error(f"Error: {e}")
         return None
 
 
 # UI
 st.title("🎬 AutoCaptionAI")
-st.write("Generate subtitles for your videos instantly using AI ⚡")
+st.write("Generate subtitles for your videos using AI.")
 
-uploaded_file = st.file_uploader("Upload video", type=["mp4", "mov"])
+uploaded_file = st.file_uploader(
+    "Upload Video",
+    type=["mp4", "mov", "avi", "mkv"]
+)
 
-if uploaded_file:
+if uploaded_file is not None:
+
     with open("input.mp4", "wb") as f:
         f.write(uploaded_file.read())
 
+    st.subheader("Original Video")
     st.video("input.mp4")
 
-    if st.button("Generate Subtitles"):
-        with st.spinner("Processing... ⏳"):
-            output_path = generate_subtitled_video("input.mp4")
+    if st.button("🚀 Generate Subtitles"):
 
-        if output_path:
-            st.success("Video created!")
-            st.video(output_path)
+        with st.spinner("Generating subtitles..."):
+
+            output_file = generate_subtitled_video("input.mp4")
+
+        if output_file:
+            st.success("✅ Video created successfully!")
+
+            st.subheader("Subtitled Video")
+            st.video(output_file)
+
+            with open(output_file, "rb") as f:
+                st.download_button(
+                    "⬇ Download Video",
+                    f,
+                    file_name="subtitled_video.mp4",
+                    mime="video/mp4"
+                )
+
         else:
-            st.error("Video failed ❌")
+            st.error("❌ Failed to generate video.")
