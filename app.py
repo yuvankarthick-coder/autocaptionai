@@ -21,7 +21,7 @@ model = load_model()
 
 def generate_subtitled_video(video_path):
     try:
-        # Transcribe video
+        # Generate subtitles
         segments, info = model.transcribe(video_path)
         segments = list(segments)
 
@@ -65,7 +65,7 @@ def generate_subtitled_video(video_path):
                     break
 
             if subtitle_text:
-                # Background box
+                # Subtitle background
                 cv2.rectangle(
                     frame,
                     (20, height - 120),
@@ -95,29 +95,37 @@ def generate_subtitled_video(video_path):
         cap.release()
         writer.close()
 
+        # Merge original audio using FFmpeg
         final_output = "final_output.mp4"
 
-        subprocess.run([
-    "ffmpeg",
-    "-y",
-    "-i", "output.mp4",
-    "-i", video_path,
-    "-c:v", "copy",
-    "-c:a", "aac",
-    "-map", "0:v:0",
-    "-map", "1:a:0",
-    final_output
-])
+        subprocess.run(
+            [
+                "ffmpeg",
+                "-y",
+                "-i", output_path,
+                "-i", video_path,
+                "-c:v", "copy",
+                "-c:a", "aac",
+                "-map", "0:v:0",
+                "-map", "1:a:0",
+                final_output
+            ],
+            check=True
+        )
 
-if os.path.exists(final_output):
-    return final_output
+        if os.path.exists(final_output):
+            return final_output
 
-return None
+        return None
+
+    except Exception as e:
+        st.error(f"Error: {e}")
+        return None
 
 
 # UI
 st.title("🎬 AutoCaptionAI")
-st.write("Generate subtitles for your videos using AI.")
+st.write("Generate subtitles for your videos using AI ⚡")
 
 uploaded_file = st.file_uploader(
     "Upload Video",
@@ -143,14 +151,3 @@ if uploaded_file is not None:
 
             st.subheader("Subtitled Video")
             st.video(output_file)
-
-            with open(output_file, "rb") as f:
-                st.download_button(
-                    "⬇ Download Video",
-                    f,
-                    file_name="subtitled_video.mp4",
-                    mime="video/mp4"
-                )
-
-        else:
-            st.error("❌ Failed to generate video.")
