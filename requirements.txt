@@ -3,3 +3,4 @@ faster-whisper
 opencv-python-headless
 imageio
 imageio-ffmpeg
+ffmpeg-python
