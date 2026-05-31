@@ -65,7 +65,6 @@ def generate_subtitled_video(video_path):
                     break
 
             if subtitle_text:
-
     wrapped_text = textwrap.wrap(subtitle_text, width=30)
 
     line_count = max(1, len(wrapped_text))
