@@ -110,7 +110,7 @@ def generate_subtitled_video(video_path):
 
                 y = height - box_height + 35
 
-                for line in wrapped_text:
+for line in wrapped_text:
 
     if subtitle_style == "YouTube Shorts":
 
