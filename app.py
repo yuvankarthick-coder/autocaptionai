@@ -92,17 +92,28 @@ def generate_subtitled_video(video_path):
             frame_count += 1
 
         cap.release()
-        writer.close()
+writer.close()
 
-        if os.path.exists(output_path):
-            if os.path.getsize(output_path) > 1000:
-                return output_path
+import subprocess
 
-        return None
+final_output = "final_output.mp4"
 
-    except Exception as e:
-        st.error(f"Error: {e}")
-        return None
+subprocess.run([
+    "ffmpeg",
+    "-y",
+    "-i", "output.mp4",
+    "-i", video_path,
+    "-c:v", "copy",
+    "-c:a", "aac",
+    "-map", "0:v:0",
+    "-map", "1:a:0",
+    final_output
+])
+
+if os.path.exists(final_output):
+    return final_output
+
+return None
 
 
 # UI
