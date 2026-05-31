@@ -20,13 +20,38 @@ def load_model():
 model = load_model()
 
 
+def format_timestamp(seconds):
+    hours = int(seconds // 3600)
+    minutes = int((seconds % 3600) // 60)
+    secs = int(seconds % 60)
+    millis = int((seconds - int(seconds)) * 1000)
+
+    return f"{hours:02}:{minutes:02}:{secs:02},{millis:03}"
+
+
+def generate_srt(video_path):
+    segments, _ = model.transcribe(video_path)
+    segments = list(segments)
+
+    srt_path = "subtitles.srt"
+
+    with open(srt_path, "w", encoding="utf-8") as f:
+        for i, seg in enumerate(segments, start=1):
+            start = format_timestamp(seg.start)
+            end = format_timestamp(seg.end)
+
+            f.write(f"{i}\n")
+            f.write(f"{start} --> {end}\n")
+            f.write(f"{seg.text.strip()}\n\n")
+
+    return srt_path
+
+
 def generate_subtitled_video(video_path):
     try:
-        # Generate subtitles
-        segments, info = model.transcribe(video_path)
+        segments, _ = model.transcribe(video_path)
         segments = list(segments)
 
-        # Open video
         cap = cv2.VideoCapture(video_path)
 
         if not cap.isOpened():
@@ -107,7 +132,6 @@ def generate_subtitled_video(video_path):
         cap.release()
         writer.close()
 
-        # Merge original audio using FFmpeg
         final_output = "final_output.mp4"
 
         subprocess.run(
@@ -157,8 +181,10 @@ if uploaded_file is not None:
         with st.spinner("Generating subtitles..."):
 
             output_file = generate_subtitled_video("input.mp4")
+            srt_file = generate_srt("input.mp4")
 
         if output_file:
+
             st.success("✅ Video created successfully!")
 
             st.subheader("Subtitled Video")
@@ -170,6 +196,14 @@ if uploaded_file is not None:
                     data=f,
                     file_name="subtitled_video.mp4",
                     mime="video/mp4"
+                )
+
+            with open(srt_file, "rb") as f:
+                st.download_button(
+                    "📄 Download SRT",
+                    data=f,
+                    file_name="subtitles.srt",
+                    mime="text/plain"
                 )
 
         else:
