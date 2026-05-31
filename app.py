@@ -111,54 +111,56 @@ def generate_subtitled_video(video_path):
                 y = height - box_height + 35
 
                 for line in wrapped_text:
-            if subtitle_style == "YouTube Shorts":
 
-    cv2.putText(
-        frame,
-        line,
-        (40, y),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        1,
-        (0, 255, 255),
-        2,
-        cv2.LINE_AA
-    )
+    if subtitle_style == "YouTube Shorts":
 
-elif subtitle_style == "TikTok":
+        cv2.putText(
+            frame,
+            line,
+            (40, y),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            1,
+            (0, 255, 255),
+            2,
+            cv2.LINE_AA
+        )
 
-    cv2.putText(
-        frame,
-        line,
-        (40, y),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        1.2,
-        (255, 255, 255),
-        3,
-        cv2.LINE_AA
-    )
+    elif subtitle_style == "TikTok":
 
-else:  # Instagram Reels
+        cv2.putText(
+            frame,
+            line,
+            (40, y),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            1.2,
+            (255, 255, 255),
+            3,
+            cv2.LINE_AA
+        )
 
-    (text_width, _), _ = cv2.getTextSize(
-        line,
-        cv2.FONT_HERSHEY_SIMPLEX,
-        1,
-        2
-    )
+    else:  # Instagram Reels
 
-    x = (width - text_width) // 2
+        (text_width, _), _ = cv2.getTextSize(
+            line,
+            cv2.FONT_HERSHEY_SIMPLEX,
+            1,
+            2
+        )
 
-    cv2.putText(
-        frame,
-        line,
-        (x, y),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        1,
-        (255, 255, 255),
-        2,
-        cv2.LINE_AA
-    )    
-                    y += 35
+        x = (width - text_width) // 2
+
+        cv2.putText(
+            frame,
+            line,
+            (x, y),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            1,
+            (255, 255, 255),
+            2,
+            cv2.LINE_AA
+        )
+
+    y += 35
 
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
