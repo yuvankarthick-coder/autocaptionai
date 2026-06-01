@@ -223,7 +223,7 @@ def generate_subtitled_video(
                             line,
                             (40, y),
                             cv2.FONT_HERSHEY_SIMPLEX,
-                            1,
+                            font_size,
                             (0, 255, 255),
                             2,
                             cv2.LINE_AA
@@ -236,7 +236,7 @@ def generate_subtitled_video(
                             line,
                             (40, y),
                             cv2.FONT_HERSHEY_SIMPLEX,
-                            1.2,
+                            font_size,
                             (255, 255, 255),
                             3,
                             cv2.LINE_AA
@@ -247,7 +247,7 @@ def generate_subtitled_video(
                         (text_width, _), _ = cv2.getTextSize(
                             line,
                             cv2.FONT_HERSHEY_SIMPLEX,
-                            1,
+                            font_size,
                             2
                         )
 
