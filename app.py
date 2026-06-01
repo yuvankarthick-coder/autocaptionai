@@ -339,6 +339,12 @@ language = st.selectbox(
     ]
 )
 
+font_size = st.slider("🔤 Font Size",
+                      min_value=0.5,
+                      max_value=3.0,
+                      value=1.0
+                     )
+
 uploaded_file = st.file_uploader(
     "Upload Video",
     type=[
