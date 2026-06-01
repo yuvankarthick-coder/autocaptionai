@@ -49,25 +49,31 @@ st.markdown(
 st.markdown(
     """
     <div style="
-    background: 
-linear-gradient(90deg,#6a11cb,#2575fc
-);
-    padding:20px;
-    border-radius:15px;
+    padding:30px;
+    border-radius:20px;
+    background:
+    linear-gradient(135deg,#0ea5e9,#8b5cf6);
     text-align:center;
     color:white;
     margin-bottom:20px;
     ">
-    <h2>Create AI Subtitles in 
-Seconds </h2>
-    <p>
-    Perfect for Youtube shorts,
-TikTok and Instagram Reels.
-    </p>
+    <h1>🎬 AutoCaptionAI</h1>
+    <p>Create AI Powered subtitles for
+    Youtube shorts,TikTok and Instagram 
+    Reels</p>
     </div>
-    """,
-    unsafe_allow_html=True
-)
+    """, unsafe_allow_html=True)
+
+col, col2, col3 = st.columns(3)
+
+with col1:
+    st.success("⚡ Fast AI Captions")
+
+with col2:
+    st.success("🌍 Multi-Language")
+
+with col3:
+    st.success("📄 SRT Download")
              
 # ----------------------------
 # Timestamp Formatter
@@ -344,43 +350,41 @@ def generate_subtitled_video(
 # UI
 # ----------------------------
 
-subtitle_color = st.color_picker("Subtitle Color", "#FFFFFF")
+with st.sidebar:
 
-subtitle_color = st.color_picker("Subtitle Text Color", "#FFFFFF")
+    st.title("⚙️ Settings")
 
-background_color = st.color_picker(" Background Color","#000000")
-subtitle_style = st.selectbox(
-    "🎨 Subtitle Style",
-    [
-        "YouTube Shorts",
-        "TikTok",
-        "Instagram Reels"
-    ]
-)
+    subtitle_style = st.selectbox(
+        "🎨 Subtitle style",
+        [Youtube Shorts", "TikTok","Instagram Reels"]
+        )
 
-language = st.selectbox(
-    "🌍 Language",
-    [
-        "Auto Detect",
-        "English",
-        "Tamil",
-        "Hindi",
-        "Telugu",
-        "Malayalam",
-        "Kannada",
-    ]
-)
+    language = st.selectbox(
+        "🌍 Language",
+        ["Auto Detect", "English", "Tamil", "Hindi"]
+    )
 
-font_size = st.slider("🔤 Font Size",
-                      min_value=0.5,
-                      max_value=3.0,
-                      value=1.0
-                     )
+    font_size = st.slider(
+        "🔤 Font Size",
+        0.5,
+        3.0,
+        1.0,
+    )
 
-subtitle_position = st.selectbox(
-    "📍 Subtitle position",
-    ["Bottom","Center","Top"]
-)
+    subtitle_position = st.selectbox(
+        "📍 Subtitle Position",
+        ["Bottom", "Center, "Top"]
+        )
+
+    subtitle_color = st.color_picker(
+        "🎨 Subtitle Text Color",
+        "#FFFFFF"
+        )
+
+    background_color = st.color_picker(
+        "⬛ Background Color",
+        "#000000"
+        )
 
 uploaded_file = st.file_uploader(
     "Upload Video",
@@ -465,4 +469,4 @@ if uploaded_file is not None:
 
             st.markdown("---")
             
-            st.caption("Made with ❤️ using Whisper AI")
+            st.caption("© 2026 AutoCaptionAI • Powered by Whisper AI)
