@@ -19,7 +19,53 @@ def load_model():
 
 model = load_model()
 
+# ----------------------------
+# CUSTOM UI
+# ----------------------------
 
+with st.sidebar:
+    st.image(
+        "https://cdn-icons-png.flaticon.com
+        /512/2991/2991148.png",
+        width=100
+        )
+
+        st.title("AutoCaptionAI")
+
+        st.info(
+            "Generate AI subtitles for your videos.")
+
+hide_st_style = """
+<style>
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
+header {visibility: hidden;}
+</style>
+"""
+st.markdown(
+    """
+    <div style="
+    background: linear-gradient(
+    90deg,
+    #6a11cb,
+    #2575fc
+    );
+    padding:20px;
+    border-radius:15px;
+    text-align:center;
+    color:white;
+    margin-bottom:20px;
+    ">
+    <h2>Create AI Subtitles in seconds </h2>
+    <p>
+    Perfect for Youtube shorts,
+    TikTok and Instagram Reels.
+    </p>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+             
 # ----------------------------
 # Timestamp Formatter
 # ----------------------------
@@ -260,12 +306,6 @@ def generate_subtitled_video(
 # ----------------------------
 # UI
 # ----------------------------
-
-st.title("🎬 AutoCaptionAI")
-st.write(
-    """create AI powered subtitles for youtube shorts, tiktok and instagram reels. 
-    upload a video generate captions, and download the subtitled video or SRT file."""
-)
 
 subtitle_style = st.selectbox(
     "🎨 Subtitle Style",
