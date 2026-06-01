@@ -309,6 +309,8 @@ def generate_subtitled_video(
 # UI
 # ----------------------------
 
+subtitle_color = st.color_picker("Subtitle Color", "#FFFFFF")
+
 subtitle_style = st.selectbox(
     "🎨 Subtitle Style",
     [
