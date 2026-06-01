@@ -216,7 +216,6 @@ def generate_subtitled_video(
                     if subtitle_style == "YouTube Shorts":
 
                         cv2.putText(
-                            font_size = st.slider("Font size",0.5,3.0,1.0)
                             frame,
                             line,
                             (40, y),
