@@ -31,10 +31,7 @@ with st.sidebar:
 
     st.title("AutoCaptionAI")
 
-    st.info(
-        "Generate AI subtitles for 
-your videos."
-    )
+    st.info("Generate AI subtitles for your videos.")
 
 hide_st_style = """
 <style>
