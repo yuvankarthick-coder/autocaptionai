@@ -137,10 +137,33 @@ def generate_subtitled_video(
     subtitle_style,
     language,
     font_size,
-    subtitle_position
+    subtitle_position,
+    subtitle_color,
+    background_color
 ):
 
     try:
+
+        # Convert background color
+        bg_hex = background_color.lstrip("#")
+
+        bg_color = (bg_rgb[2],
+                    bg_rgb[1],
+                    bg_rgb[0]
+                   )
+
+        text_hex = subtitle_color.lstrip("#")
+
+        text_bgr = tuple(
+            int(text_hex[i:i+2], 16)
+            for i in (0,2,4)
+        )
+
+        text_color = (
+            text_bgr[2],
+            text_bgr[1],
+            text_bgr[0]
+        )   
 
         segments = get_segments(
             video_path,
@@ -207,7 +230,7 @@ def generate_subtitled_video(
                     frame,
                     (20, height - box_height - 20),
                     (width - 20, height - 20),
-                    (0, 0, 0),
+                    bg_color,
                     -1
                 )
 
@@ -230,7 +253,7 @@ def generate_subtitled_video(
                             (40, y),
                             cv2.FONT_HERSHEY_SIMPLEX,
                             font_size,
-                            (0, 255, 255),
+                            text_color,
                             2,
                             cv2.LINE_AA
                         )
@@ -323,6 +346,8 @@ def generate_subtitled_video(
 
 subtitle_color = st.color_picker("Subtitle Color", "#FFFFFF")
 
+subtitle_color = st.color_picker("Subtitle Text Color", "#FFFFFF")
+
 background_color = st.color_picker(" Background Color","#000000")
 subtitle_style = st.selectbox(
     "🎨 Subtitle Style",
@@ -386,7 +411,9 @@ if uploaded_file is not None:
                 subtitle_style,
                 language,
                 font_size,
-                subtitle_position
+                subtitle_position,
+                subtitle_color,
+                background_color
             )
 
             srt_file = generate_srt(
