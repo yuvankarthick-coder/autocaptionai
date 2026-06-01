@@ -371,10 +371,9 @@ with st.sidebar:
         1.0,
     )
 
-    subtitle_position = st.selectbox(
-        "📍 Subtitle Position",
-        ["Bottom", "Center, "Top"]
-        )
+    subtitle_position = st.selectbox("📍 Subtitle Position",["Bottom", "Center, "Top"]
+    
+    )
 
     subtitle_color = st.color_picker(
         "🎨 Subtitle Text Color",
