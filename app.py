@@ -95,6 +95,8 @@ def get_segments(video_path, language):
         "Kannada": "ka",
     }
 
+    font_size = st.slider("🔤 Font Size" ,0.5,3.0,1.0)
+    
     if language == "Auto Detect":
         segments, _ = model.transcribe(video_path)
     else:
