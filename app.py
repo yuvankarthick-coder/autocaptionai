@@ -8,7 +8,7 @@ from faster_whisper import WhisperModel
 
 # Page Config
 st.set_page_config(
-    page_title="AutoCaptionAI - AI video subtitle generator",
+    page_title="AutoCaptionAI - Free AI subtitle generator",
     page_icon="🎬"
 )
 
@@ -91,8 +91,8 @@ def get_segments(video_path, language):
         "Tamil": "ta",
         "Hindi": "hi",
         "Telugu": "te",
-        "Malayalam": "ma",
-        "Kannada": "ka",
+        "Malayalam": "ml",
+        "Kannada": "kn",
     }
 
     font_size = st.slider("🔤 Font Size" ,0.5,3.0,1.0)
@@ -138,6 +138,7 @@ def generate_subtitled_video(
     video_path,
     subtitle_style,
     language,
+    font_size
 ):
 
     try:
@@ -331,7 +332,10 @@ language = st.selectbox(
         "Auto Detect",
         "English",
         "Tamil",
-        "Hindi"
+        "Hindi",
+        "Telugu",
+        "Malayalam",
+        "Kannada",
     ]
 )
 
@@ -362,7 +366,8 @@ if uploaded_file is not None:
             output_file = generate_subtitled_video(
                 "input.mp4",
                 subtitle_style,
-                language
+                language,
+                font_size
             )
 
             srt_file = generate_srt(
@@ -410,4 +415,7 @@ if uploaded_file is not None:
 
             st.error(
                 "❌ Failed to generate video."
-            ) 
+            )
+
+                st.markdown("---")
+                st.caption("Made with ❤️ using Whisper AI")
