@@ -8,7 +8,7 @@ from faster_whisper import WhisperModel
 
 # Page Config
 st.set_page_config(
-    page_title="AutoCaptionAI",
+    page_title="AutoCaptionAI - AI video subtitle generator",
     page_icon="🎬"
 )
 
@@ -83,7 +83,8 @@ def generate_srt(video_path, language):
 def generate_subtitled_video(
     video_path,
     subtitle_style,
-    language
+    language,
+    subtitle_colour
 ):
 
     try:
@@ -262,7 +263,8 @@ def generate_subtitled_video(
 
 st.title("🎬 AutoCaptionAI")
 st.write(
-    "Generate subtitles for your videos using AI ⚡"
+    """create AI powered subtitles for youtube shorts, tiktok and instagram reels. 
+    upload a video generate captions, and download the subtitled video or SRT file."""
 )
 
 subtitle_style = st.selectbox(
