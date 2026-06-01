@@ -24,17 +24,20 @@ model = load_model()
 # ----------------------------
 
 with st.sidebar:
+    
     st.image(
         
-    "https://cdn-icons-png.flaticon.com
-    /512/2991/2991148.png",
+"https://cdn-icons-png.flaticon.com
+/512/2991/2991148.png",
         width=100
     )
 
-        st.title("AutoCaptionAI")
+    st.title("AutoCaptionAI")
 
-        st.info(
-            "Generate AI subtitles for your videos.")
+    st.info(
+        "Generate AI subtitles for 
+your videos."
+    )
 
 hide_st_style = """
 <style>
@@ -43,6 +46,12 @@ footer {visibility: hidden;}
 header {visibility: hidden;}
 </style>
 """
+
+st.markdown(
+    hide_st_style,
+    unsafe_allow_html=True
+)
+
 st.markdown(
     """
     <div style="
@@ -59,7 +68,7 @@ linear-gradient(90deg,#6a11cb,#2575fc
 Seconds </h2>
     <p>
     Perfect for Youtube shorts,
-    TikTok and Instagram Reels.
+TikTok and Instagram Reels.
     </p>
     </div>
     """,
@@ -130,7 +139,6 @@ def generate_subtitled_video(
     video_path,
     subtitle_style,
     language,
-    subtitle_colour
 ):
 
     try:
