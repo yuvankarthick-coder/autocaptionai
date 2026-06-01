@@ -343,6 +343,11 @@ font_size = st.slider("🔤 Font Size",
                       value=1.0
                      )
 
+subtitle_position = st.selectbox(
+    "📍 Subtitle position",
+    ["Bottom","Center","Top"]
+)
+
 uploaded_file = st.file_uploader(
     "Upload Video",
     type=[
