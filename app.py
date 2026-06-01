@@ -136,7 +136,8 @@ def generate_subtitled_video(
     video_path,
     subtitle_style,
     language,
-    font_size
+    font_size,
+    subtitle_position
 ):
 
     try:
@@ -210,6 +211,13 @@ def generate_subtitled_video(
                     -1
                 )
 
+            if  subtitle_position == "Top":
+                y = 80
+
+            elif subtitle_position == "Center":
+                y = height // 2
+
+            else:
                 y = height - box_height + 35
 
                 for line in wrapped_text:
@@ -376,7 +384,8 @@ if uploaded_file is not None:
                 "input.mp4",
                 subtitle_style,
                 language,
-                font_size
+                font_size,
+                subtitle_position
             )
 
             srt_file = generate_srt(
