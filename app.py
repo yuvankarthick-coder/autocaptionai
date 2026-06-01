@@ -25,10 +25,7 @@ model = load_model()
 
 with st.sidebar:
     
-    st.image(
-        
-"https://cdn-icons-png.flaticon.com
-/512/2991/2991148.png",
+    st.image("https://cdn-icons-png.flaticon.com/512/2991/2991148.png",
         width=100
     )
 
