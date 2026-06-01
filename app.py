@@ -417,5 +417,6 @@ if uploaded_file is not None:
                 "❌ Failed to generate video."
             )
 
-                st.markdown("---")
-                st.caption("Made with ❤️ using Whisper AI")
+            st.markdown("---")
+            
+            st.caption("Made with ❤️ using Whisper AI")
