@@ -356,7 +356,7 @@ with st.sidebar:
 
     subtitle_style = st.selectbox(
         "🎨 Subtitle style",
-        [Youtube Shorts", "TikTok","Instagram Reels"]
+        ["Youtube Shorts", "TikTok","Instagram Reels"]
         )
 
     language = st.selectbox(
