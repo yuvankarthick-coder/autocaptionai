@@ -4,3 +4,4 @@ opencv-python-headless
 imageio
 imageio-ffmpeg
 ffmpeg-python
+openai
