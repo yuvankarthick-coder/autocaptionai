@@ -399,7 +399,7 @@ st.markdown("---")
 
 st.info("""AutoCaptionAI creates AI-powered subtitles for Youtube shorts, tiktok and Instagram Reels.""")
 
-st.subheader("🎥 Upload your video)
+st.subheader("🎥 Upload your video")
 st.write("Supports MP4, MOV, AVI and MKV files")
 
 uploaded_file = st.file_uploader(
