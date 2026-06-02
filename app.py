@@ -214,14 +214,18 @@ def generate_subtitled_video(
             text_bgr[0]
         )   
 
-        segments = get_segments(
+        segments, full_transcript = get_segments(
             video_path,
             language
         )
 
         st.subheader("📄 Transcript")
-
         st.write(full_transcript)
+
+        st.subheader("📝 AI Content Assistant")
+
+        if st.button("Generate AI Titles"):
+            st.write("Comming Soon...")
 
         cap = cv2.VideoCapture(video_path)
 
