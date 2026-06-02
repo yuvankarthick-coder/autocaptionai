@@ -36,6 +36,28 @@ def generate_titles(transcript):
     return
     response.choices[0].message.content
 
+def generate_description(transcript):
+
+    prompt = f"""
+    Generate a Youtube video description based on this transcript.
+
+    Transcript:
+    {transcript}
+    """
+
+    response = client.chat.completions.create(
+      model="gpt-4.1-mini",
+      messages=[
+        {
+          "role": "user",
+          "content": prompt
+        }
+      ]
+    )
+
+     return
+     response.choices[0].message.content
+
 # Page Config
 st.set_page_config(
     page_title="AutoCaptionAI - Free AI subtitle generator",
@@ -289,15 +311,12 @@ def generate_subtitled_video(
 
         if st.button("Generate Description"):
 
+          description = generate_description(full_transcript)
+
             st.text_area(
                 "Description",
-                value=f"""
-         This video covers:
-
-         {full_transcript[:300]}
-
-         Created using AutoCaptionAI.""",
-                height=200
+                description,
+              height=200
             )
 
         cap = cv2.VideoCapture(video_path)
