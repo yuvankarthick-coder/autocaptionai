@@ -470,4 +470,4 @@ if uploaded_file is not None:
 
             st.markdown("---")
             
-            st.caption("© 2026 AutoCaptionAI • Powered by Whisper AI)
+            st.caption("© 2026 AutoCaptionAI • Powered by Whisper AI")
