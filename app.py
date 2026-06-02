@@ -313,11 +313,11 @@ def generate_subtitled_video(
 
           description = generate_description(full_transcript)
 
-            st.text_area(
-                "Description",
-                description,
-              height=200
-            )
+        st.text_area(
+          "Description",
+          description,
+          height=200
+        )
 
         cap = cv2.VideoCapture(video_path)
 
