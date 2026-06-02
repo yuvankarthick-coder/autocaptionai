@@ -33,7 +33,7 @@ def generate_titles(transcript):
         ]
     )
 
-    return
+     return
 response.choices[0].message.content
 
 # Page Config
