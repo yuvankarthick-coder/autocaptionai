@@ -360,6 +360,8 @@ def generate_subtitled_video(
 
 with st.sidebar:
 
+    st.image("logo.png",width=120)
+
     st.title("⚙️ Settings")
 
     subtitle_style = st.selectbox(
