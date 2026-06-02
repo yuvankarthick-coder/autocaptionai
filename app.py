@@ -33,6 +33,23 @@ with st.sidebar:
 
     st.info("Generate AI subtitles for your videos.")
 
+font_style = st.selectbox(
+    "🔤 Font Style",
+    [
+        "Simple",
+        "Bold",
+        "Classic"
+    ]
+)
+
+     st.info(
+         f"""
+         🎨 Style: {subtitle_style}
+         🌍 Language: {language}
+         📍 Position: {subtitle_position}
+         """
+     )
+
 hide_st_style = """
 <style>
 #MainMenu {visibility: hidden;}
@@ -155,7 +172,8 @@ def generate_subtitled_video(
     font_size,
     subtitle_position,
     subtitle_color,
-    background_color
+    background_color,
+    font_style
 ):
 
     try:
@@ -167,6 +185,15 @@ def generate_subtitled_video(
                     bg_rgb[1],
                     bg_rgb[0]
                    )
+
+        if font_style == "Bold":
+            font = cv2.FONT_HERSHEY_DUPLEX
+
+        elif font_style == "Classic":
+            font = cv2.FONT_HERSHEY_TRIPLEX
+
+        else:
+            font = cv2.FONT_HERSHEY_SIMPLEX
 
         text_hex = subtitle_color.lstrip("#")
 
@@ -267,7 +294,7 @@ def generate_subtitled_video(
                             frame,
                             line,
                             (40, y),
-                            cv2.FONT_HERSHEY_SIMPLEX,
+                            font,
                             font_size,
                             text_color,
                             2,
@@ -280,7 +307,7 @@ def generate_subtitled_video(
                             frame,
                             line,
                             (40, y),
-                            cv2.FONT_HERSHEY_SIMPLEX,
+                            font,
                             font_size,
                             (255, 255, 255),
                             3,
@@ -291,7 +318,7 @@ def generate_subtitled_video(
 
                         (text_width, _), _ = cv2.getTextSize(
                             line,
-                            cv2.FONT_HERSHEY_SIMPLEX,
+                            font,
                             font_size,
                             2
                         )
@@ -302,7 +329,7 @@ def generate_subtitled_video(
                             frame,
                             line,
                             (x, y),
-                            cv2.FONT_HERSHEY_SIMPLEX,
+                            font,
                             1,
                             (255, 255, 255),
                             2,
@@ -441,7 +468,8 @@ if uploaded_file is not None:
                 font_size,
                 subtitle_position,
                 subtitle_color,
-                background_color
+                background_color,
+                font_style
             )
 
             progress.progress(80)
