@@ -46,13 +46,13 @@ add_watermark = st.checkbox(
     "🏷️ Add AutoCaptionAI Watermark",value=True
 )
 
-     st.info(
-         f"""
-         🎨 Style: {subtitle_style}
-         🌍 Language: {language}
-         📍 Position: {subtitle_position}
-         """
-     )
+st.info(
+    f"""
+    🎨 Style: {subtitle_style}
+    🌍 Language: {language}
+    📍 Position: {subtitle_position}
+    """
+)
 
 hide_st_style = """
 <style>
