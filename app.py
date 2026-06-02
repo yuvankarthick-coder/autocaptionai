@@ -449,7 +449,7 @@ with st.sidebar:
         "#000000"
         )
 
-    target_language = st.sselectbox(
+    target_language = st.selectbox(
         "🌍 Translate To",
         [
             "None",
