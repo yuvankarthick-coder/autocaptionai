@@ -132,7 +132,13 @@ def get_segments(video_path, language):
             language=lang_map[language]
         )
 
-    return list(segments)
+    segments = list(segments)
+
+    full_transcript = " ".join(
+        segment.text for segment in segments
+    )
+
+    return segments, full_transcript
 
 
 # ----------------------------
@@ -140,7 +146,10 @@ def get_segments(video_path, language):
 # ----------------------------
 def generate_srt(video_path, language):
 
-    segments = get_segments(video_path, language)
+    segments, full_transcript = get_segments(
+        video_path,
+        language
+    )
 
     srt_path = "subtitles.srt"
 
@@ -209,6 +218,10 @@ def generate_subtitled_video(
             video_path,
             language
         )
+
+        st.subheader("📄 Transcript")
+
+        st.write(full_transcript)
 
         cap = cv2.VideoCapture(video_path)
 
