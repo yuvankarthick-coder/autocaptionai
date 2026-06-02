@@ -55,8 +55,8 @@ def generate_description(transcript):
       ]
     )
 
-     return
-     response.choices[0].message.content
+    return
+    response.choices[0].message.content
 
 # Page Config
 st.set_page_config(
