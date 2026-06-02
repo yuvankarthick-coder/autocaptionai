@@ -9,7 +9,7 @@ from faster_whisper import WhisperModel
 # Page Config
 st.set_page_config(
     page_title="AutoCaptionAI - Free AI subtitle generator",
-    page_icon="🎬"
+    page_icon="logo.png"
 )
 
 # Load Whisper Model
@@ -63,6 +63,8 @@ st.markdown(
     Reels</p>
     </div>
     """, unsafe_allow_html=True)
+
+st.image("logo.png",width=180)
 
 col1, col2 = st.columns(2)
 
