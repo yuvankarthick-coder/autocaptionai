@@ -42,6 +42,10 @@ font_style = st.selectbox(
     ]
 )
 
+add_watermark = st.checkbox(
+    "🏷️ Add AutoCaptionAI Watermark",value=True
+)
+
      st.info(
          f"""
          🎨 Style: {subtitle_style}
@@ -173,7 +177,8 @@ def generate_subtitled_video(
     subtitle_position,
     subtitle_color,
     background_color,
-    font_style
+    font_style,
+    add_watermark
 ):
 
     try:
@@ -328,7 +333,7 @@ def generate_subtitled_video(
                         cv2.putText(
                             frame,
                             line,
-                            (x, y),
+                            (x, y),cv
                             font,
                             1,
                             (255, 255, 255),
@@ -337,6 +342,19 @@ def generate_subtitled_video(
                         )
 
                     y += 35
+
+            if add_watermark:
+
+                cv2.putText(
+                    frame,
+                    "AutoCaptionAI",
+                    (width - 250, height - 30),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.7,
+                    (255,255,255),
+                    2,
+                    cv2.LINE_AA
+                )
 
             frame_rgb = cv2.cvtColor(
                 frame,
