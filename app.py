@@ -46,37 +46,6 @@ add_watermark = st.checkbox(
     "🏷️ Add AutoCaptionAI Watermark",value=True
 )
 
-    subtitle_style = st.selectbox(
-        "🎨 Subtitle style",
-        ["Youtube Shorts", "TikTok","Instagram Reels"]
-        )
-
-    language = st.selectbox(
-        "🌍 Language",
-        ["Auto Detect", "English", "Tamil", "Hindi"]
-    )
-
-    font_size = st.slider(
-        "🔤 Font Size",
-        0.5,
-        3.0,
-        1.0,
-    )
-
-    subtitle_position = st.selectbox(
-        "📍 Subtitle Position",
-        ["Bottom","Center","Top"]
-        
-        )
-
-st.info(
-    f"""
-    🎨 Style: {subtitle_style}
-    🌍 Language: {language}
-    📍 Position: {subtitle_position}
-    """
-)
-
 hide_st_style = """
 <style>
 #MainMenu {visibility: hidden;}
@@ -466,6 +435,14 @@ with st.sidebar:
         "⬛ Background Color",
         "#000000"
         )
+
+    st.info(
+    f"""
+    🎨 Style: {subtitle_style}
+    🌍 Language: {language}
+    📍 Position: {subtitle_position}
+    """
+)
 
 st.markdown("---")
 
