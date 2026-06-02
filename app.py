@@ -333,7 +333,7 @@ def generate_subtitled_video(
                         cv2.putText(
                             frame,
                             line,
-                            (x, y),cv
+                            (x, y),
                             font,
                             1,
                             (255, 255, 255),
