@@ -64,6 +64,14 @@ st.markdown(
     </div>
     """, unsafe_allow_html=True)
 
+col1, col2 = st.columns(2)
+
+with col1:
+    st.metric("🌍 Languages", "4")
+
+with col2:
+    st.metric("🎨 Styles", "3")
+
 col1, col2, col3 = st.columns(3)
 
 with col1:
@@ -387,6 +395,13 @@ with st.sidebar:
         "#000000"
         )
 
+st.markdown("---")
+
+st.info("""AutoCaptionAI creates AI-powered subtitles for Youtube shorts, tiktok and Instagram Reels.""")
+
+st.subheader("🎥 Upload your video)
+st.write("Supports MP4, MOV, AVI and MKV files")
+
 uploaded_file = st.file_uploader(
     "Upload Video",
     type=[
@@ -411,6 +426,10 @@ if uploaded_file is not None:
             "Generating subtitles..."
         ):
 
+            progress = st.progress(0)
+
+            progress.progress(20)
+
             output_file = generate_subtitled_video(
                 "input.mp4",
                 subtitle_style,
@@ -421,10 +440,14 @@ if uploaded_file is not None:
                 background_color
             )
 
+            progress.progress(80)
+
             srt_file = generate_srt(
                 "input.mp4",
                 language
             )
+
+        progress.progress(100)
 
         if output_file:
 
