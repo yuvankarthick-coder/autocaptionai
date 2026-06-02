@@ -373,7 +373,7 @@ with st.sidebar:
 
     subtitle_position = st.selectbox(
         "📍 Subtitle Position",
-        ["Bottom","Center,"Top"]
+        ["Bottom","Center","Top"]
         
         )
 
