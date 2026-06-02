@@ -227,6 +227,45 @@ def generate_subtitled_video(
         if st.button("Generate AI Titles"):
             st.write("Comming Soon...")
 
+        st.subheader("📝 Suggested Titles")
+
+        if st.button("Generate Titles"):
+
+            st.write("🚀 How I Created This Amazing Video")
+            st.write("🔥 Watch This Before You Start")
+            st.write("The Complete Guide")
+                     
+        st.subheader("🏷️ Suggested Hashtags"):
+
+        if st.button("Generate Hashtags"):
+            hashtags = [
+                "#YoutubeShorts",
+                "#ContentCreator",
+                "#AutoCaptionAI",
+                "#AI",
+                "#Reels",
+                "#InstagramReels",
+                "#AIContent",
+                "#IndianCreators"
+            ]
+
+            st.code(" ".join(hashtags))
+
+        st.subheader("📄 Suggested Description")
+
+        if st.button("Generate Description"):
+
+            st.text_area(
+                "Description",
+                value=f"""
+         This video covers:
+
+         {full_transcript[:300]}
+
+         Created using AutoCaptionAI.""",
+                height=200
+            )
+
         cap = cv2.VideoCapture(video_path)
 
         if not cap.isOpened():
