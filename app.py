@@ -6,6 +6,36 @@ import textwrap
 import subprocess
 from faster_whisper import WhisperModel
 
+from openai import OpenAI
+
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"]
+               )
+
+def get_segments(video_path,language):
+    ...
+    return segments, full_transcript
+
+def generate_titles(transcript):
+
+    prompt = f"""
+    Generate 5 catchy Youtube shorts Titles.
+
+    Transcript:
+    {transcript}
+    """
+    response = client.chat.completions.create(
+        model="gpt-4.1-mini",
+        messages=[
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ]
+    )
+
+    return
+response.choices[0].message.content
+
 # Page Config
 st.set_page_config(
     page_title="AutoCaptionAI - Free AI subtitle generator",
@@ -231,9 +261,13 @@ def generate_subtitled_video(
 
         if st.button("Generate Titles"):
 
-            st.write("🚀 How I Created This Amazing Video")
-            st.write("🔥 Watch This Before You Start")
-            st.write("The Complete Guide")
+            with st.spinner("Generating AI Titles"):
+
+                titles = generate_titles(full_transcript)
+                st.write(titles)
+
+            st.success("Titles Generated!")
+            st.write(titles)
                      
         st.subheader("🏷️ Suggested Hashtags")
 
