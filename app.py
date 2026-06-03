@@ -32,9 +32,8 @@ def generate_titles(transcript):
             }
         ]
     )
-
-    return
-    response.choices[0].message.content
+    
+    return response.choices[0].message.content
 
 def generate_description(transcript):
 
@@ -55,8 +54,7 @@ def generate_description(transcript):
       ]
     )
 
-    return
-    response.choices[0].message.content
+    return response.choices[0].message.content
 
 # Page Config
 st.set_page_config(
@@ -239,22 +237,10 @@ def generate_subtitled_video(
         # Convert background color
         bg_hex = background_color.lstrip("#")
 
-        bg_color = (bg_rgb[2],
-                    bg_rgb[1],
-                    bg_rgb[0]
-                   )
-
-        color_map = {
-          "Black": (0, 0, 0),
-          "White": (255, 255, 255),
-          "Blue": (255, 0, 0),
-          "Red": (0, 0, 255),
-          "Green": (0, 255, 0)
-        }
-
-        bg_rgb = color_map.get(
-          background_color,
-          (0, 0, 0)
+        bg_rgb = (
+          int(bg_hex[4:6], 16),
+          int(bg_hex[2:4], 16),
+          int(bg_hex[0:2], 16)
         )
 
         if font_style == "Bold":
@@ -284,22 +270,21 @@ def generate_subtitled_video(
             language
         )
 
-        st.subheader("📄 Transcript")
+        st.subheader("Transcript")
         st.write(full_transcript)
+
+        if st.button("Generate Titles"):
+
+        with st.spinner("Generating AI Titles"):
+          titles = generate_titles(full_transcript)
+          st.write(titles)
 
         st.subheader("📝 AI Content Assistant")
 
         if st.button("Generate AI Titles"):
-            st.write("Comming Soon...")
+            st.write("Coming Soon...")
 
         st.subheader("📝 Suggested Titles")
-
-        if st.button("Generate Titles"):
-
-            with st.spinner("Generating AI Titles"):
-
-                titles = generate_titles(full_transcript)
-                st.write(titles)
 
             st.success("Titles Generated!")
             st.write(titles)
@@ -322,13 +307,15 @@ def generate_subtitled_video(
 
         st.subheader("📄 Suggested Description")
 
+        description = ""
+
         if st.button("Generate Description"):
 
           description = generate_description(full_transcript)
 
         st.text_area(
           "Description",
-          description,
+          value=description,
           height=200
         )
 
