@@ -284,9 +284,8 @@ def generate_subtitled_video(
             st.write("Coming Soon...")
 
         st.subheader("📝 Suggested Titles")
-
-            st.success("Titles Generated!")
-            st.write(titles)
+        st.success("Titles Generated!")
+        st.write(titles)
                      
         st.subheader("🏷️ Suggested Hashtags")
 
