@@ -274,10 +274,9 @@ def generate_subtitled_video(
         st.write(full_transcript)
 
         if st.button("Generate Titles"):
-
-        with st.spinner("Generating AI Titles"):
-          titles = generate_titles(full_transcript)
-          st.write(titles)
+          with st.spinner("Generating AI Titles"):
+            titles = generate_titles(full_transcript)
+            st.write(titles)
 
         st.subheader("📝 AI Content Assistant")
 
