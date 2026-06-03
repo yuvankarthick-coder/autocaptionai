@@ -244,6 +244,19 @@ def generate_subtitled_video(
                     bg_rgb[0]
                    )
 
+        color_map = {
+          "Black": (0, 0, 0),
+          "White": (255, 255, 255),
+          "Blue": (255, 0, 0),
+          "Red": (0, 0, 255),
+          "Green": (0, 255, 0)
+        }
+
+        bg_rgb = color_map.get(
+          background_color,
+          (0, 0, 0)
+        )
+
         if font_style == "Bold":
             font = cv2.FONT_HERSHEY_DUPLEX
 
@@ -379,7 +392,7 @@ def generate_subtitled_video(
                     frame,
                     (20, height - box_height - 20),
                     (width - 20, height - 20),
-                    bg_rgb,
+                    bg_color,
                     -1
                 )
 
