@@ -286,8 +286,8 @@ def generate_subtitled_video(
         st.subheader("📝 Suggested Titles")
         st.success("Titles Generated!")
       st.write(titles)
-                     
-        st.subheader("🏷️ Suggested Hashtags")
+
+st.subheader("🏷️ Suggested Hashtags")
 
         if st.button("Generate Hashtags"):
             hashtags = [
