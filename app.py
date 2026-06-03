@@ -392,7 +392,7 @@ def generate_subtitled_video(
                     frame,
                     (20, height - box_height - 20),
                     (width - 20, height - 20),
-                    bg_color,
+                    bg_rgb,
                     -1
                 )
 
