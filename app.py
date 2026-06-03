@@ -609,7 +609,8 @@ if uploaded_file is not None:
                 subtitle_position,
                 subtitle_color,
                 background_color,
-                font_style
+                font_style,
+                add_watermark
             )
 
             progress.progress(80)
