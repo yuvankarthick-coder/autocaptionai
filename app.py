@@ -283,11 +283,11 @@ def generate_subtitled_video(
         if st.button("Generate AI Titles"):
             st.write("Coming Soon...")
 
-        st.subheader("📝 Suggested Titles")
-        st.success("Titles Generated!")
-      st.write(titles)
+            st.subheader("📝 Suggested Titles")
+            st.success("Titles Generated!")
+            st.write(titles)
 
-st.subheader("🏷️ Suggested Hashtags")
+            st.subheader("🏷️ Suggested Hashtags")
 
         if st.button("Generate Hashtags"):
             hashtags = [
