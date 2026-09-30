@@ -1,7 +1,8 @@
 streamlit
 faster-whisper
 opencv-python-headless
-imageio
-imageio-ffmpeg
+imageio==2.34.2
+imageio-ffmpeg==0.5.1
 ffmpeg-python
 openai
+av==14.4.0
