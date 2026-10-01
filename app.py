@@ -43,8 +43,6 @@ FONT_STYLES = {
 
 SUPPORTED_VIDEO_TYPES = ["mp4", "mov", "avi", "mkv"]
 
-GENERATION_MODES = ["Standard Subtitles", "Ad Subtitles", "YouTube Shorts"]
-
 # Keep the maximum number of characters per line conservative. The actual
 # wrapping below is pixel-aware, so this is only a first-pass safeguard.
 MAX_CHARS_PER_LINE = 42
@@ -152,6 +150,8 @@ def transcribe_video(video_path: str, language: str):
     if whisper_language:
         kwargs["language"] = whisper_language
 
+    # Word timestamps are needed by the animated YouTube Shorts renderer.
+    kwargs["word_timestamps"] = True
     segments, info = model.transcribe(video_path, **kwargs)
     segment_list = []
 
@@ -159,11 +159,26 @@ def transcribe_video(video_path: str, language: str):
         text = segment.text.strip()
         if not text:
             continue
+
+        words = []
+        for word in (getattr(segment, "words", None) or []):
+            word_text = (getattr(word, "word", "") or "").strip()
+            if not word_text:
+                continue
+            words.append(
+                {
+                    "start": float(getattr(word, "start", segment.start)),
+                    "end": float(getattr(word, "end", segment.end)),
+                    "text": word_text,
+                }
+            )
+
         segment_list.append(
             {
                 "start": float(segment.start),
                 "end": float(segment.end),
                 "text": text,
+                "words": words,
             }
         )
 
@@ -341,39 +356,17 @@ def render_subtitled_video(
     font_style,
     add_watermark,
     progress_callback=None,
-    mode="Standard Subtitles",
 ):
-    """Render subtitles once using a mode-specific layout preset."""
-    fps, src_width, src_height, frame_count, _ = get_video_metadata(video_path)
+    """Render subtitles onto video frames. Does not transcribe again."""
+    fps, width, height, frame_count, _ = get_video_metadata(video_path)
 
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
         raise ValueError("Could not open video for subtitle rendering.")
 
-    # Mode presets keep the three products visually separate without duplicating
-    # transcription logic.
-    if mode == "YouTube Shorts":
-        output_width, output_height = 1080, 1920
-        effective_font_size = max(font_size, 1.35)
-        effective_style = "TikTok"
-        effective_position = "Center" if subtitle_position == "Bottom" else subtitle_position
-        effective_background = "#000000"
-    elif mode == "Ad Subtitles":
-        output_width, output_height = src_width, src_height
-        effective_font_size = max(font_size, 1.15)
-        effective_style = "Instagram Reels"
-        effective_position = subtitle_position
-        effective_background = background_color
-    else:
-        output_width, output_height = src_width, src_height
-        effective_font_size = font_size
-        effective_style = subtitle_style
-        effective_position = subtitle_position
-        effective_background = background_color
-
     font = FONT_STYLES.get(font_style, cv2.FONT_HERSHEY_SIMPLEX)
     text_color = hex_to_bgr(subtitle_color)
-    background_bgr = hex_to_bgr(effective_background)
+    background_bgr = hex_to_bgr(background_color)
 
     writer = imageio.get_writer(
         output_video_path,
@@ -385,20 +378,6 @@ def render_subtitled_video(
     segment_index = 0
     frame_number = 0
 
-    def prepare_frame(frame):
-        if mode != "YouTube Shorts":
-            return frame
-
-        # Fill a 9:16 canvas by scaling the source to cover it, then center-cropping.
-        src_h, src_w = frame.shape[:2]
-        scale = max(output_width / src_w, output_height / src_h)
-        new_w = max(output_width, int(round(src_w * scale)))
-        new_h = max(output_height, int(round(src_h * scale)))
-        resized = cv2.resize(frame, (new_w, new_h), interpolation=cv2.INTER_AREA)
-        x = max(0, (new_w - output_width) // 2)
-        y = max(0, (new_h - output_height) // 2)
-        return resized[y:y + output_height, x:x + output_width]
-
     try:
         while True:
             ret, frame = cap.read()
@@ -407,6 +386,8 @@ def render_subtitled_video(
 
             current_time = frame_number / fps
 
+            # Advance through finished subtitle segments instead of scanning
+            # the entire transcript for every frame.
             while (
                 segment_index < len(segments)
                 and segments[segment_index]["end"] < current_time
@@ -419,16 +400,14 @@ def render_subtitled_video(
                 if current_segment["start"] <= current_time <= current_segment["end"]:
                     subtitle_text = current_segment["text"]
 
-            frame = prepare_frame(frame)
-
             if subtitle_text:
                 draw_subtitle(
                     frame,
                     subtitle_text,
-                    effective_position,
-                    effective_style,
+                    subtitle_position,
+                    subtitle_style,
                     font,
-                    effective_font_size,
+                    font_size,
                     text_color,
                     background_bgr,
                 )
@@ -440,6 +419,213 @@ def render_subtitled_video(
             writer.append_data(frame_rgb)
             frame_number += 1
 
+            if progress_callback and frame_count > 0:
+                progress_callback(min(frame_number / frame_count, 1.0))
+    finally:
+        cap.release()
+        writer.close()
+
+
+
+def make_vertical_frame(frame, target_width=1080, target_height=1920):
+    """Center-crop a frame into a 9:16 Shorts canvas."""
+    h, w = frame.shape[:2]
+    target_ratio = target_width / target_height
+    source_ratio = w / h if h else target_ratio
+
+    if source_ratio > target_ratio:
+        crop_w = max(1, int(h * target_ratio))
+        x1 = max(0, (w - crop_w) // 2)
+        frame = frame[:, x1:x1 + crop_w]
+    else:
+        crop_h = max(1, int(w / target_ratio))
+        y1 = max(0, (h - crop_h) // 2)
+        frame = frame[y1:y1 + crop_h, :]
+
+    return cv2.resize(frame, (target_width, target_height), interpolation=cv2.INTER_AREA)
+
+
+def flatten_words(segments):
+    """Return a continuous list of Whisper word dictionaries."""
+    words = []
+    for segment in segments:
+        for word in segment.get("words", []):
+            words.append(word)
+    return words
+
+
+def build_word_groups(words, words_per_caption=2):
+    """Group adjacent words while preserving their individual timestamps."""
+    groups = []
+    size = max(1, int(words_per_caption))
+    for i in range(0, len(words), size):
+        chunk = words[i:i + size]
+        if not chunk:
+            continue
+        groups.append(
+            {
+                "start": chunk[0]["start"],
+                "end": chunk[-1]["end"],
+                "words": chunk,
+                "text": " ".join(w["text"] for w in chunk),
+            }
+        )
+    return groups
+
+
+def draw_animated_shorts_caption(
+    frame,
+    group,
+    current_time,
+    font,
+    font_scale,
+    text_color,
+    highlight_color,
+    position="Center",
+    animation="Pop",
+):
+    """Draw a mobile Shorts-style caption with timed word highlighting."""
+    if not group:
+        return
+
+    height, width = frame.shape[:2]
+    words = group["words"]
+    active_index = 0
+    for index, word in enumerate(words):
+        if word["start"] <= current_time <= word["end"]:
+            active_index = index
+            break
+        if current_time >= word["start"]:
+            active_index = index
+
+    # Pop the whole caption in during the first 120ms and out during the last 100ms.
+    progress_in = min(1.0, max(0.0, (current_time - group["start"]) / 0.12))
+    progress_out = min(1.0, max(0.0, (group["end"] - current_time) / 0.10))
+    anim_progress = min(progress_in, progress_out)
+
+    if animation == "Pop":
+        scale_multiplier = 0.88 + 0.12 * anim_progress
+    elif animation == "Fade":
+        scale_multiplier = 1.0
+    else:
+        scale_multiplier = 1.0
+
+    caption_scale = max(0.5, font_scale * scale_multiplier)
+    thickness = 3
+    outline = 7
+    gap = 28
+    word_sizes = [
+        cv2.getTextSize(word["text"], font, caption_scale, thickness)[0]
+        for word in words
+    ]
+    total_width = sum(size[0] for size in word_sizes) + gap * (len(words) - 1)
+    total_height = max((size[1] for size in word_sizes), default=50)
+    x = max(25, (width - total_width) // 2)
+
+    if position == "Top":
+        baseline = max(90, int(height * 0.20))
+    elif position == "Bottom":
+        baseline = min(height - 150, int(height * 0.78))
+    else:
+        baseline = int(height * 0.58)
+
+    # Soft dark backing only around the active caption group.
+    pad_x, pad_y = 34, 28
+    box_left = max(15, x - pad_x)
+    box_right = min(width - 15, x + total_width + pad_x)
+    box_top = max(15, baseline - total_height - pad_y)
+    box_bottom = min(height - 15, baseline + pad_y)
+    overlay = frame.copy()
+    cv2.rectangle(overlay, (box_left, box_top), (box_right, box_bottom), (0, 0, 0), -1)
+    opacity = 0.72 if animation != "Fade" else 0.55
+    cv2.addWeighted(overlay, opacity, frame, 1 - opacity, 0, frame)
+
+    for index, word in enumerate(words):
+        word_text = word["text"]
+        word_width = word_sizes[index][0]
+        color = highlight_color if index == active_index else text_color
+
+        # Strong outline keeps captions readable over any video.
+        cv2.putText(
+            frame, word_text, (x, baseline), font, caption_scale,
+            (0, 0, 0), outline, cv2.LINE_AA,
+        )
+        cv2.putText(
+            frame, word_text, (x, baseline), font, caption_scale,
+            color, thickness, cv2.LINE_AA,
+        )
+        x += word_width + gap
+
+
+def render_animated_shorts_video(
+    video_path,
+    segments,
+    output_video_path,
+    font_size,
+    subtitle_position,
+    subtitle_color,
+    highlight_color,
+    font_style,
+    words_per_caption=2,
+    animation="Pop",
+    add_watermark=True,
+    progress_callback=None,
+):
+    """Render animated word-by-word captions on a vertical 9:16 Shorts video."""
+    fps, _, _, frame_count, _ = get_video_metadata(video_path)
+    cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        raise ValueError("Could not open video for Shorts rendering.")
+
+    font = FONT_STYLES.get(font_style, cv2.FONT_HERSHEY_SIMPLEX)
+    text_color = hex_to_bgr(subtitle_color)
+    highlight_bgr = hex_to_bgr(highlight_color)
+    words = flatten_words(segments)
+    groups = build_word_groups(words, words_per_caption)
+    if not groups:
+        raise RuntimeError("Whisper did not return word timestamps for this video.")
+
+    writer = imageio.get_writer(
+        output_video_path,
+        fps=fps,
+        codec="libx264",
+        macro_block_size=1,
+    )
+
+    group_index = 0
+    frame_number = 0
+    try:
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+
+            current_time = frame_number / fps
+            frame = make_vertical_frame(frame)
+
+            while group_index < len(groups) and groups[group_index]["end"] < current_time:
+                group_index += 1
+
+            if group_index < len(groups):
+                group = groups[group_index]
+                if group["start"] <= current_time <= group["end"]:
+                    draw_animated_shorts_caption(
+                        frame,
+                        group,
+                        current_time,
+                        font,
+                        font_size * 1.35,
+                        text_color,
+                        highlight_bgr,
+                        subtitle_position,
+                        animation,
+                    )
+
+            if add_watermark:
+                add_watermark_to_frame(frame)
+
+            writer.append_data(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+            frame_number += 1
             if progress_callback and frame_count > 0:
                 progress_callback(min(frame_number / frame_count, 1.0))
     finally:
@@ -589,18 +775,6 @@ if "description" not in st.session_state:
     st.session_state.description = ""
 if "hashtags" not in st.session_state:
     st.session_state.hashtags = ""
-if "standard_video" not in st.session_state:
-    st.session_state.standard_video = None
-if "ad_video" not in st.session_state:
-    st.session_state.ad_video = None
-if "shorts_video" not in st.session_state:
-    st.session_state.shorts_video = None
-if "standard_srt" not in st.session_state:
-    st.session_state.standard_srt = None
-if "ad_srt" not in st.session_state:
-    st.session_state.ad_srt = None
-if "shorts_srt" not in st.session_state:
-    st.session_state.shorts_srt = None
 
 
 # -----------------------------------------------------------------------------
@@ -642,6 +816,11 @@ with st.sidebar:
         st.image("logo.png", width=120)
 
     st.title("⚙️ Settings")
+
+    generation_mode = st.selectbox(
+        "🎬 Subtitle Generator",
+        ["Standard Subtitles", "Ad Subtitles", "YouTube Shorts Subtitles"],
+    )
 
     subtitle_style = st.selectbox(
         "🎨 Subtitle Style",
@@ -690,6 +869,22 @@ with st.sidebar:
         "🏷️ Add AutoCaptionAI Watermark",
         value=True,
     )
+
+    animated_words = 2
+    animation_style = "Pop"
+    highlight_color = "#FFD600"
+    if generation_mode == "YouTube Shorts Subtitles":
+        st.markdown("### ✨ Animated Shorts")
+        animated_words = st.slider(
+            "Words per caption", 1, 4, 2,
+            help="1 gives a true word-by-word effect; 2–4 gives short punchy phrases."
+        )
+        animation_style = st.selectbox(
+            "Caption Animation", ["Pop", "Fade", "None"]
+        )
+        highlight_color = st.color_picker(
+            "Active Word Color", "#FFD600"
+        )
 
     st.info(
         f"Style: {subtitle_style}\n\n"
@@ -751,166 +946,122 @@ if uploaded_file is not None:
         st.session_state.titles = ""
         st.session_state.description = ""
         st.session_state.hashtags = ""
-        st.session_state.standard_video = None
-        st.session_state.ad_video = None
-        st.session_state.shorts_video = None
-        st.session_state.standard_srt = None
-        st.session_state.ad_srt = None
-        st.session_state.shorts_srt = None
 
     input_path = st.session_state.input_path
 
     st.subheader("Original Video")
     st.video(input_path)
 
-    st.subheader("🚀 Choose a subtitle generator")
-    generation_mode = st.radio(
-        "Generation type",
-        GENERATION_MODES,
-        horizontal=True,
-        label_visibility="collapsed",
-    )
+    button_label = {
+        "Standard Subtitles": "🚀 Generate Subtitles",
+        "Ad Subtitles": "📢 Generate Ad Subtitles",
+        "YouTube Shorts Subtitles": "📱 Generate YouTube Shorts Subtitles",
+    }[generation_mode]
 
-    mode_descriptions = {
-        "Standard Subtitles": "Normal subtitle generation using your selected styling settings.",
-        "Ad Subtitles": "Ad-focused captions with stronger readability and presentation styling.",
-        "YouTube Shorts": "Creates a separate 9:16 vertical Shorts video with mobile-friendly captions.",
-    }
-    st.info(mode_descriptions[generation_mode])
-
-    if generation_mode == "Ad Subtitles":
-        st.caption("📢 Ad mode creates a separate ad output and keeps your original video dimensions.")
-    elif generation_mode == "YouTube Shorts":
-        st.caption("📱 Shorts mode creates a separate 1080×1920 vertical output by center-cropping the source video.")
-
-    button_labels = {
-        "Standard Subtitles": "🚀 Generate Standard Subtitles",
-        "Ad Subtitles": "📢 Generate Subtitles for Ads",
-        "YouTube Shorts": "📱 Generate Subtitles for YouTube Shorts",
-    }
-
-    if st.button(button_labels[generation_mode], type="primary", use_container_width=True):
+    if st.button(button_label, type="primary", use_container_width=True):
         try:
             with st.status(f"Generating {generation_mode.lower()}...", expanded=True) as status:
-                # Reuse the same transcription for every mode.
-                if not st.session_state.segments:
-                    st.write("🎙️ Transcribing audio with Whisper...")
-                    segments, transcript, detected_language = transcribe_video(
-                        input_path,
-                        language,
+                st.write("🎙️ Transcribing audio with Whisper...")
+                segments, transcript, detected_language = transcribe_video(
+                    input_path, language
+                )
+
+                if not segments:
+                    raise RuntimeError(
+                        "No speech was detected. Try a video with clearer speech or a supported language."
                     )
 
-                    if not segments:
-                        raise RuntimeError(
-                            "No speech was detected. Try a video with clearer speech or a supported language."
-                        )
+                st.session_state.segments = segments
+                st.session_state.transcript = transcript
+                st.session_state.detected_language = detected_language
 
-                    st.session_state.segments = segments
-                    st.session_state.transcript = transcript
-                    st.session_state.detected_language = detected_language
-                else:
-                    st.write("⚡ Reusing the existing transcription...")
-                    segments = st.session_state.segments
-
-                if st.session_state.detected_language:
-                    st.write(f"Detected language: `{st.session_state.detected_language}`")
+                if detected_language:
+                    st.write(f"Detected language: `{detected_language}`")
 
                 render_segments = segments
-                if target_language != "None":
+                if target_language != "None" and generation_mode != "YouTube Shorts Subtitles":
                     st.write(f"🌍 Translating subtitles to {target_language}...")
                     render_segments = translate_segments(segments, target_language)
                     st.session_state.translated = True
                 else:
                     st.session_state.translated = False
+                    if generation_mode == "YouTube Shorts Subtitles" and target_language != "None":
+                        st.info("Animated Shorts currently uses the spoken-language word timings so the animation stays synchronized.")
 
                 job_dir = Path(st.session_state.job_dir)
-                mode_slug = {
-                    "Standard Subtitles": "standard",
-                    "Ad Subtitles": "ads",
-                    "YouTube Shorts": "shorts",
-                }[generation_mode]
-
-                silent_video = job_dir / f"{mode_slug}_subtitled_silent.mp4"
-                final_video = job_dir / f"{mode_slug}_subtitled_video.mp4"
-                srt_path = job_dir / f"{mode_slug}_subtitles.srt"
-
-                st.write("🎬 Rendering subtitles onto the video...")
                 progress = st.progress(0)
 
-                render_subtitled_video(
-                    input_path,
-                    render_segments,
-                    str(silent_video),
-                    subtitle_style,
-                    font_size,
-                    subtitle_position,
-                    subtitle_color,
-                    background_color,
-                    font_style,
-                    watermark_enabled,
-                    progress_callback=lambda value: progress.progress(int(value * 100)),
-                    mode=generation_mode,
-                )
+                if generation_mode == "YouTube Shorts Subtitles":
+                    silent_video = job_dir / "youtube_shorts_animated_silent.mp4"
+                    final_video = job_dir / "youtube_shorts_animated.mp4"
+                    srt_path = job_dir / "youtube_shorts_animated.srt"
 
-                st.write("🔊 Restoring original audio...")
-                mux_audio(str(silent_video), input_path, str(final_video))
-                generate_srt_from_segments(render_segments, str(srt_path))
+                    st.write("✨ Rendering animated word-by-word captions in 9:16...")
+                    render_animated_shorts_video(
+                        input_path,
+                        segments,
+                        str(silent_video),
+                        font_size,
+                        subtitle_position,
+                        subtitle_color,
+                        highlight_color,
+                        font_style,
+                        words_per_caption=animated_words,
+                        animation=animation_style,
+                        add_watermark=watermark_enabled,
+                        progress_callback=lambda value: progress.progress(int(value * 100)),
+                    )
+                    st.write("🔊 Restoring original audio...")
+                    mux_audio(str(silent_video), input_path, str(final_video))
+                    generate_srt_from_segments(segments, str(srt_path))
+                    st.session_state.subtitle_video = str(final_video)
+                    st.session_state.srt_file = str(srt_path)
 
-                if generation_mode == "Standard Subtitles":
-                    st.session_state.standard_video = str(final_video)
-                    st.session_state.standard_srt = str(srt_path)
-                elif generation_mode == "Ad Subtitles":
-                    st.session_state.ad_video = str(final_video)
-                    st.session_state.ad_srt = str(srt_path)
                 else:
-                    st.session_state.shorts_video = str(final_video)
-                    st.session_state.shorts_srt = str(srt_path)
+                    silent_video = job_dir / (
+                        "ad_subtitles_silent.mp4" if generation_mode == "Ad Subtitles"
+                        else "subtitled_video_silent.mp4"
+                    )
+                    final_video = job_dir / (
+                        "ad_subtitles.mp4" if generation_mode == "Ad Subtitles"
+                        else "final_output.mp4"
+                    )
+                    srt_path = job_dir / (
+                        "ad_subtitles.srt" if generation_mode == "Ad Subtitles"
+                        else "subtitles.srt"
+                    )
 
-                status.update(
-                    label=f"{generation_mode} generated successfully!",
-                    state="complete",
-                )
+                    # Ads use a stronger, larger caption preset while preserving the source dimensions.
+                    ad_font_size = max(font_size, 1.15) if generation_mode == "Ad Subtitles" else font_size
+                    ad_style = "TikTok" if generation_mode == "Ad Subtitles" else subtitle_style
+
+                    st.write("🎬 Rendering subtitles onto the video...")
+                    render_subtitled_video(
+                        input_path,
+                        render_segments,
+                        str(silent_video),
+                        ad_style,
+                        ad_font_size,
+                        subtitle_position,
+                        subtitle_color,
+                        background_color,
+                        font_style,
+                        watermark_enabled,
+                        progress_callback=lambda value: progress.progress(int(value * 100)),
+                    )
+                    st.write("🔊 Restoring original audio...")
+                    mux_audio(str(silent_video), input_path, str(final_video))
+                    generate_srt_from_segments(render_segments, str(srt_path))
+                    st.session_state.subtitle_video = str(final_video)
+                    st.session_state.srt_file = str(srt_path)
+
+                status.update(label=f"{generation_mode} generated successfully!", state="complete")
 
         except subprocess.CalledProcessError as exc:
             error_text = exc.stderr or str(exc)
             st.error(f"FFmpeg failed while processing the video:\n\n{error_text[-2000:]}")
         except Exception as exc:
             st.error(f"Could not generate subtitles: {exc}")
-
-    # Show each generated product independently so one output never replaces another.
-    generated_outputs = [
-        ("🎬 Standard Subtitled Video", st.session_state.standard_video, st.session_state.standard_srt, "standard"),
-        ("📢 Ad Subtitled Video", st.session_state.ad_video, st.session_state.ad_srt, "ads"),
-        ("📱 YouTube Shorts Video", st.session_state.shorts_video, st.session_state.shorts_srt, "shorts"),
-    ]
-
-    for title, video_path, srt_path, slug in generated_outputs:
-        if video_path and os.path.exists(video_path):
-            st.markdown("---")
-            st.subheader(title)
-            st.video(video_path)
-            download_col1, download_col2 = st.columns(2)
-            with download_col1:
-                with open(video_path, "rb") as video_file:
-                    st.download_button(
-                        f"⬇️ Download {slug.title()} MP4",
-                        data=video_file,
-                        file_name=f"autocaption_{slug}_subtitled_video.mp4",
-                        mime="video/mp4",
-                        use_container_width=True,
-                        key=f"download_{slug}_video",
-                    )
-            with download_col2:
-                if srt_path and os.path.exists(srt_path):
-                    with open(srt_path, "rb") as srt_file:
-                        st.download_button(
-                            f"⬇️ Download {slug.title()} SRT",
-                            data=srt_file,
-                            file_name=f"autocaption_{slug}_subtitles.srt",
-                            mime="application/x-subrip",
-                            use_container_width=True,
-                            key=f"download_{slug}_srt",
-                        )
 
 
 # -----------------------------------------------------------------------------
@@ -985,3 +1136,43 @@ if st.session_state.transcript:
     if st.session_state.hashtags:
         st.subheader("🏷️ Suggested Hashtags")
         st.code(st.session_state.hashtags)
+
+
+# -----------------------------------------------------------------------------
+# Downloads / final video
+# -----------------------------------------------------------------------------
+if st.session_state.subtitle_video and os.path.exists(st.session_state.subtitle_video):
+    st.markdown("---")
+    st.subheader("🎬 Final Video")
+    st.video(st.session_state.subtitle_video)
+
+    download_col1, download_col2 = st.columns(2)
+
+    with download_col1:
+        with open(st.session_state.subtitle_video, "rb") as video_file:
+            st.download_button(
+                "⬇️ Download MP4",
+                data=video_file,
+                file_name=(
+                    "autocaption_youtube_shorts_animated.mp4"
+                    if st.session_state.get("subtitle_video", "").endswith("youtube_shorts_animated.mp4")
+                    else "autocaption_subtitled_video.mp4"
+                ),
+                mime="video/mp4",
+                use_container_width=True,
+            )
+
+    with download_col2:
+        if st.session_state.srt_file and os.path.exists(st.session_state.srt_file):
+            with open(st.session_state.srt_file, "rb") as srt_file:
+                st.download_button(
+                    "⬇️ Download SRT",
+                    data=srt_file,
+                    file_name=(
+                        "autocaption_youtube_shorts_animated.srt"
+                        if st.session_state.get("srt_file", "").endswith("youtube_shorts_animated.srt")
+                        else "autocaption_subtitles.srt"
+                    ),
+                    mime="application/x-subrip",
+                    use_container_width=True,
+                )
