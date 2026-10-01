@@ -43,6 +43,8 @@ FONT_STYLES = {
 
 SUPPORTED_VIDEO_TYPES = ["mp4", "mov", "avi", "mkv"]
 
+GENERATION_MODES = ["Standard Subtitles", "Ad Subtitles", "YouTube Shorts"]
+
 # Keep the maximum number of characters per line conservative. The actual
 # wrapping below is pixel-aware, so this is only a first-pass safeguard.
 MAX_CHARS_PER_LINE = 42
@@ -339,17 +341,39 @@ def render_subtitled_video(
     font_style,
     add_watermark,
     progress_callback=None,
+    mode="Standard Subtitles",
 ):
-    """Render subtitles onto video frames. Does not transcribe again."""
-    fps, width, height, frame_count, _ = get_video_metadata(video_path)
+    """Render subtitles once using a mode-specific layout preset."""
+    fps, src_width, src_height, frame_count, _ = get_video_metadata(video_path)
 
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
         raise ValueError("Could not open video for subtitle rendering.")
 
+    # Mode presets keep the three products visually separate without duplicating
+    # transcription logic.
+    if mode == "YouTube Shorts":
+        output_width, output_height = 1080, 1920
+        effective_font_size = max(font_size, 1.35)
+        effective_style = "TikTok"
+        effective_position = "Center" if subtitle_position == "Bottom" else subtitle_position
+        effective_background = "#000000"
+    elif mode == "Ad Subtitles":
+        output_width, output_height = src_width, src_height
+        effective_font_size = max(font_size, 1.15)
+        effective_style = "Instagram Reels"
+        effective_position = subtitle_position
+        effective_background = background_color
+    else:
+        output_width, output_height = src_width, src_height
+        effective_font_size = font_size
+        effective_style = subtitle_style
+        effective_position = subtitle_position
+        effective_background = background_color
+
     font = FONT_STYLES.get(font_style, cv2.FONT_HERSHEY_SIMPLEX)
     text_color = hex_to_bgr(subtitle_color)
-    background_bgr = hex_to_bgr(background_color)
+    background_bgr = hex_to_bgr(effective_background)
 
     writer = imageio.get_writer(
         output_video_path,
@@ -361,6 +385,20 @@ def render_subtitled_video(
     segment_index = 0
     frame_number = 0
 
+    def prepare_frame(frame):
+        if mode != "YouTube Shorts":
+            return frame
+
+        # Fill a 9:16 canvas by scaling the source to cover it, then center-cropping.
+        src_h, src_w = frame.shape[:2]
+        scale = max(output_width / src_w, output_height / src_h)
+        new_w = max(output_width, int(round(src_w * scale)))
+        new_h = max(output_height, int(round(src_h * scale)))
+        resized = cv2.resize(frame, (new_w, new_h), interpolation=cv2.INTER_AREA)
+        x = max(0, (new_w - output_width) // 2)
+        y = max(0, (new_h - output_height) // 2)
+        return resized[y:y + output_height, x:x + output_width]
+
     try:
         while True:
             ret, frame = cap.read()
@@ -369,8 +407,6 @@ def render_subtitled_video(
 
             current_time = frame_number / fps
 
-            # Advance through finished subtitle segments instead of scanning
-            # the entire transcript for every frame.
             while (
                 segment_index < len(segments)
                 and segments[segment_index]["end"] < current_time
@@ -383,14 +419,16 @@ def render_subtitled_video(
                 if current_segment["start"] <= current_time <= current_segment["end"]:
                     subtitle_text = current_segment["text"]
 
+            frame = prepare_frame(frame)
+
             if subtitle_text:
                 draw_subtitle(
                     frame,
                     subtitle_text,
-                    subtitle_position,
-                    subtitle_style,
+                    effective_position,
+                    effective_style,
                     font,
-                    font_size,
+                    effective_font_size,
                     text_color,
                     background_bgr,
                 )
@@ -551,6 +589,18 @@ if "description" not in st.session_state:
     st.session_state.description = ""
 if "hashtags" not in st.session_state:
     st.session_state.hashtags = ""
+if "standard_video" not in st.session_state:
+    st.session_state.standard_video = None
+if "ad_video" not in st.session_state:
+    st.session_state.ad_video = None
+if "shorts_video" not in st.session_state:
+    st.session_state.shorts_video = None
+if "standard_srt" not in st.session_state:
+    st.session_state.standard_srt = None
+if "ad_srt" not in st.session_state:
+    st.session_state.ad_srt = None
+if "shorts_srt" not in st.session_state:
+    st.session_state.shorts_srt = None
 
 
 # -----------------------------------------------------------------------------
@@ -701,32 +751,69 @@ if uploaded_file is not None:
         st.session_state.titles = ""
         st.session_state.description = ""
         st.session_state.hashtags = ""
+        st.session_state.standard_video = None
+        st.session_state.ad_video = None
+        st.session_state.shorts_video = None
+        st.session_state.standard_srt = None
+        st.session_state.ad_srt = None
+        st.session_state.shorts_srt = None
 
     input_path = st.session_state.input_path
 
     st.subheader("Original Video")
     st.video(input_path)
 
-    if st.button("🚀 Generate Subtitles", type="primary", use_container_width=True):
-        try:
-            with st.status("Generating subtitles...", expanded=True) as status:
-                st.write("🎙️ Transcribing audio with Whisper...")
-                segments, transcript, detected_language = transcribe_video(
-                    input_path,
-                    language,
-                )
+    st.subheader("🚀 Choose a subtitle generator")
+    generation_mode = st.radio(
+        "Generation type",
+        GENERATION_MODES,
+        horizontal=True,
+        label_visibility="collapsed",
+    )
 
-                if not segments:
-                    raise RuntimeError(
-                        "No speech was detected. Try a video with clearer speech or a supported language."
+    mode_descriptions = {
+        "Standard Subtitles": "Normal subtitle generation using your selected styling settings.",
+        "Ad Subtitles": "Ad-focused captions with stronger readability and presentation styling.",
+        "YouTube Shorts": "Creates a separate 9:16 vertical Shorts video with mobile-friendly captions.",
+    }
+    st.info(mode_descriptions[generation_mode])
+
+    if generation_mode == "Ad Subtitles":
+        st.caption("📢 Ad mode creates a separate ad output and keeps your original video dimensions.")
+    elif generation_mode == "YouTube Shorts":
+        st.caption("📱 Shorts mode creates a separate 1080×1920 vertical output by center-cropping the source video.")
+
+    button_labels = {
+        "Standard Subtitles": "🚀 Generate Standard Subtitles",
+        "Ad Subtitles": "📢 Generate Subtitles for Ads",
+        "YouTube Shorts": "📱 Generate Subtitles for YouTube Shorts",
+    }
+
+    if st.button(button_labels[generation_mode], type="primary", use_container_width=True):
+        try:
+            with st.status(f"Generating {generation_mode.lower()}...", expanded=True) as status:
+                # Reuse the same transcription for every mode.
+                if not st.session_state.segments:
+                    st.write("🎙️ Transcribing audio with Whisper...")
+                    segments, transcript, detected_language = transcribe_video(
+                        input_path,
+                        language,
                     )
 
-                st.session_state.segments = segments
-                st.session_state.transcript = transcript
-                st.session_state.detected_language = detected_language
+                    if not segments:
+                        raise RuntimeError(
+                            "No speech was detected. Try a video with clearer speech or a supported language."
+                        )
 
-                if detected_language:
-                    st.write(f"Detected language: `{detected_language}`")
+                    st.session_state.segments = segments
+                    st.session_state.transcript = transcript
+                    st.session_state.detected_language = detected_language
+                else:
+                    st.write("⚡ Reusing the existing transcription...")
+                    segments = st.session_state.segments
+
+                if st.session_state.detected_language:
+                    st.write(f"Detected language: `{st.session_state.detected_language}`")
 
                 render_segments = segments
                 if target_language != "None":
@@ -737,10 +824,15 @@ if uploaded_file is not None:
                     st.session_state.translated = False
 
                 job_dir = Path(st.session_state.job_dir)
-                rendered_video = job_dir / "subtitled_video.mp4"
-                silent_video = job_dir / "subtitled_video_silent.mp4"
-                srt_path = job_dir / "subtitles.srt"
-                final_video = job_dir / "final_output.mp4"
+                mode_slug = {
+                    "Standard Subtitles": "standard",
+                    "Ad Subtitles": "ads",
+                    "YouTube Shorts": "shorts",
+                }[generation_mode]
+
+                silent_video = job_dir / f"{mode_slug}_subtitled_silent.mp4"
+                final_video = job_dir / f"{mode_slug}_subtitled_video.mp4"
+                srt_path = job_dir / f"{mode_slug}_subtitles.srt"
 
                 st.write("🎬 Rendering subtitles onto the video...")
                 progress = st.progress(0)
@@ -757,25 +849,68 @@ if uploaded_file is not None:
                     font_style,
                     watermark_enabled,
                     progress_callback=lambda value: progress.progress(int(value * 100)),
+                    mode=generation_mode,
                 )
 
                 st.write("🔊 Restoring original audio...")
                 mux_audio(str(silent_video), input_path, str(final_video))
-
                 generate_srt_from_segments(render_segments, str(srt_path))
 
-                # Keep translated captions in memory for the SRT/video generated
-                # in this run, while preserving the original transcript for AI content.
-                st.session_state.subtitle_video = str(final_video)
-                st.session_state.srt_file = str(srt_path)
+                if generation_mode == "Standard Subtitles":
+                    st.session_state.standard_video = str(final_video)
+                    st.session_state.standard_srt = str(srt_path)
+                elif generation_mode == "Ad Subtitles":
+                    st.session_state.ad_video = str(final_video)
+                    st.session_state.ad_srt = str(srt_path)
+                else:
+                    st.session_state.shorts_video = str(final_video)
+                    st.session_state.shorts_srt = str(srt_path)
 
-                status.update(label="Subtitles generated successfully!", state="complete")
+                status.update(
+                    label=f"{generation_mode} generated successfully!",
+                    state="complete",
+                )
 
         except subprocess.CalledProcessError as exc:
             error_text = exc.stderr or str(exc)
             st.error(f"FFmpeg failed while processing the video:\n\n{error_text[-2000:]}")
         except Exception as exc:
             st.error(f"Could not generate subtitles: {exc}")
+
+    # Show each generated product independently so one output never replaces another.
+    generated_outputs = [
+        ("🎬 Standard Subtitled Video", st.session_state.standard_video, st.session_state.standard_srt, "standard"),
+        ("📢 Ad Subtitled Video", st.session_state.ad_video, st.session_state.ad_srt, "ads"),
+        ("📱 YouTube Shorts Video", st.session_state.shorts_video, st.session_state.shorts_srt, "shorts"),
+    ]
+
+    for title, video_path, srt_path, slug in generated_outputs:
+        if video_path and os.path.exists(video_path):
+            st.markdown("---")
+            st.subheader(title)
+            st.video(video_path)
+            download_col1, download_col2 = st.columns(2)
+            with download_col1:
+                with open(video_path, "rb") as video_file:
+                    st.download_button(
+                        f"⬇️ Download {slug.title()} MP4",
+                        data=video_file,
+                        file_name=f"autocaption_{slug}_subtitled_video.mp4",
+                        mime="video/mp4",
+                        use_container_width=True,
+                        key=f"download_{slug}_video",
+                    )
+            with download_col2:
+                if srt_path and os.path.exists(srt_path):
+                    with open(srt_path, "rb") as srt_file:
+                        st.download_button(
+                            f"⬇️ Download {slug.title()} SRT",
+                            data=srt_file,
+                            file_name=f"autocaption_{slug}_subtitles.srt",
+                            mime="application/x-subrip",
+                            use_container_width=True,
+                            key=f"download_{slug}_srt",
+                        )
 
 
 # -----------------------------------------------------------------------------
@@ -850,35 +985,3 @@ if st.session_state.transcript:
     if st.session_state.hashtags:
         st.subheader("🏷️ Suggested Hashtags")
         st.code(st.session_state.hashtags)
-
-
-# -----------------------------------------------------------------------------
-# Downloads / final video
-# -----------------------------------------------------------------------------
-if st.session_state.subtitle_video and os.path.exists(st.session_state.subtitle_video):
-    st.markdown("---")
-    st.subheader("🎬 Final Video")
-    st.video(st.session_state.subtitle_video)
-
-    download_col1, download_col2 = st.columns(2)
-
-    with download_col1:
-        with open(st.session_state.subtitle_video, "rb") as video_file:
-            st.download_button(
-                "⬇️ Download MP4",
-                data=video_file,
-                file_name="autocaption_subtitled_video.mp4",
-                mime="video/mp4",
-                use_container_width=True,
-            )
-
-    with download_col2:
-        if st.session_state.srt_file and os.path.exists(st.session_state.srt_file):
-            with open(st.session_state.srt_file, "rb") as srt_file:
-                st.download_button(
-                    "⬇️ Download SRT",
-                    data=srt_file,
-                    file_name="autocaption_subtitles.srt",
-                    mime="application/x-subrip",
-                    use_container_width=True,
-                )
