@@ -1,8 +1,11 @@
 import os
 import re
+import shutil
 import subprocess
 import tempfile
 import textwrap
+import threading
+import time
 from pathlib import Path
 
 import cv2
@@ -43,6 +46,17 @@ FONT_STYLES = {
 
 SUPPORTED_VIDEO_TYPES = ["mp4", "mov", "avi", "mkv"]
 
+# Basic public-app protection. These limits keep accidental or oversized jobs
+# from consuming the Streamlit server for too long.
+MAX_UPLOAD_MB = 100
+MAX_VIDEO_DURATION_SECONDS = 5 * 60
+JOB_CLEANUP_AGE_SECONDS = 2 * 60 * 60
+
+# A process-wide lock prevents multiple heavy video jobs from running at the
+# same time in a Streamlit worker. Other users receive a friendly message
+# instead of piling up CPU/RAM-heavy Whisper + FFmpeg work.
+PROCESSING_LOCK = threading.Lock()
+
 # Keep the maximum number of characters per line conservative. The actual
 # wrapping below is pixel-aware, so this is only a first-pass safeguard.
 MAX_CHARS_PER_LINE = 42
@@ -64,6 +78,30 @@ def safe_filename(name: str) -> str:
     name = Path(name).name
     name = re.sub(r"[^A-Za-z0-9._-]+", "_", name)
     return name or "uploaded_video.mp4"
+
+
+def cleanup_old_job_dirs():
+    """Remove abandoned AutoCaptionAI temp jobs older than the cleanup age."""
+    temp_root = Path(tempfile.gettempdir())
+    now = time.time()
+    for job_dir in temp_root.glob("autocaption_*"):
+        try:
+            if not job_dir.is_dir():
+                continue
+            if now - job_dir.stat().st_mtime > JOB_CLEANUP_AGE_SECONDS:
+                shutil.rmtree(job_dir, ignore_errors=True)
+        except OSError:
+            continue
+
+
+def cleanup_job_dir(job_dir):
+    """Safely remove one completed/abandoned job directory."""
+    if not job_dir:
+        return
+    try:
+        shutil.rmtree(job_dir, ignore_errors=True)
+    except OSError:
+        pass
 
 
 def hex_to_bgr(hex_color: str):
@@ -753,6 +791,8 @@ Subtitle lines:
 # -----------------------------------------------------------------------------
 # Session state
 # -----------------------------------------------------------------------------
+cleanup_old_job_dirs()
+
 if "job_dir" not in st.session_state:
     st.session_state.job_dir = None
 if "uploaded_video" not in st.session_state:
@@ -775,6 +815,8 @@ if "description" not in st.session_state:
     st.session_state.description = ""
 if "hashtags" not in st.session_state:
     st.session_state.hashtags = ""
+if "processing" not in st.session_state:
+    st.session_state.processing = False
 
 
 # -----------------------------------------------------------------------------
@@ -919,6 +961,8 @@ st.write("Supports MP4, MOV, AVI and MKV files.")
 uploaded_file = st.file_uploader(
     "Upload Video",
     type=SUPPORTED_VIDEO_TYPES,
+    max_upload_size=MAX_UPLOAD_MB,
+    help=f"Maximum file size: {MAX_UPLOAD_MB} MB. Maximum video length: 5 minutes.",
 )
 
 
@@ -929,6 +973,9 @@ if uploaded_file is not None:
     upload_key = f"{uploaded_file.name}:{uploaded_file.size}"
 
     if st.session_state.uploaded_video != upload_key:
+        # The previous job is no longer needed once a new upload replaces it.
+        cleanup_job_dir(st.session_state.get("job_dir"))
+
         # A unique directory prevents concurrent users from overwriting files.
         job_dir = Path(tempfile.mkdtemp(prefix="autocaption_"))
         input_path = job_dir / safe_filename(uploaded_file.name)
@@ -949,6 +996,24 @@ if uploaded_file is not None:
 
     input_path = st.session_state.input_path
 
+    # Reject long videos before Whisper starts, saving CPU/RAM on a public app.
+    try:
+        _, _, _, _, duration = get_video_metadata(input_path)
+        if duration > MAX_VIDEO_DURATION_SECONDS:
+            st.error(
+                "This video is too long. Please upload a video that is "
+                "5 minutes or shorter."
+            )
+            st.stop()
+    except ValueError as exc:
+        st.error(str(exc))
+        st.stop()
+
+    st.caption(
+        f"Video length: {int(duration // 60)}:{int(duration % 60):02d} "
+        f"• Limit: 5:00 • Upload limit: {MAX_UPLOAD_MB} MB"
+    )
+
     st.subheader("Original Video")
     st.video(input_path)
 
@@ -958,7 +1023,20 @@ if uploaded_file is not None:
         "YouTube Shorts Subtitles": "📱 Generate YouTube Shorts Subtitles",
     }[generation_mode]
 
-    if st.button(button_label, type="primary", use_container_width=True):
+    if st.button(
+        button_label,
+        type="primary",
+        use_container_width=True,
+        disabled=st.session_state.processing,
+    ):
+        if not PROCESSING_LOCK.acquire(blocking=False):
+            st.warning(
+                "AutoCaptionAI is processing another video right now. "
+                "Please wait a moment and try again."
+            )
+            st.stop()
+
+        st.session_state.processing = True
         try:
             with st.status(f"Generating {generation_mode.lower()}...", expanded=True) as status:
                 st.write("🎙️ Transcribing audio with Whisper...")
@@ -1062,6 +1140,9 @@ if uploaded_file is not None:
             st.error(f"FFmpeg failed while processing the video:\n\n{error_text[-2000:]}")
         except Exception as exc:
             st.error(f"Could not generate subtitles: {exc}")
+        finally:
+            st.session_state.processing = False
+            PROCESSING_LOCK.release()
 
 
 # -----------------------------------------------------------------------------
