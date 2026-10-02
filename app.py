@@ -940,6 +940,20 @@ with st.sidebar:
 # -----------------------------------------------------------------------------
 st.image("logo.png", width=180)
 
+st.markdown(
+    """
+    <div style="text-align:center; padding: 10px 20px 25px 20px;">
+        <h1 style="font-size:42px; margin-bottom:10px;">
+            Turn your videos into captioned Shorts in minutes.
+        </h1>
+        <p style="font-size:19px; opacity:0.75;">
+            Upload → Transcribe → Animate → Download → Post
+        </p>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
 col1, col2 = st.columns(2)
 with col1:
     st.metric("🌍 Languages", str(len(LANGUAGES)))
